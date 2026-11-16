@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // react-pdf працює лише в Node.js і не повинен бандлитися.
+  serverExternalPackages: ['@react-pdf/renderer'],
 };
 
 export default nextConfig;
