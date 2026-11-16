@@ -26,6 +26,7 @@ export default async function PublicInvoicePage({ params, searchParams }: PagePr
   const returnedPayment =
     typeof paymentId === 'string' ? await getReturnedPayment(invoice.id, paymentId) : null;
   const returned = returnedPayment && {
+    paymentId: paymentId as string,
     status:
       returnedPayment.status === 'PENDING' || returnedPayment.status === 'FAILED'
         ? returnedPayment.status

@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/session';
 import { sendInvoiceIssuedEmail, sendInvoicePaidEmails, sendReminderEmail } from '@/features/notifications/email';
 import { invoiceCancelled, invoiceIssued, invoicePaid, reminderRequested } from '@/inngest/client';
 import { dispatch } from '@/inngest/dispatch';
+import { cancelProviderCheckouts } from '@/features/payments/service';
 import { InvoiceError } from './errors';
 import { getInvoice } from './queries';
 import { invoiceDraftSchema } from './schema';
@@ -78,7 +79,8 @@ export async function cancelInvoiceAction(idArg: unknown): Promise<ActionResult>
   const id = parseIdArg(idArg);
   if (!id) return fail(INVALID_REQUEST);
   return guard(async () => {
-    await cancelInvoice(user.id, id);
+    const { expiredPayments } = await cancelInvoice(user.id, id);
+    await cancelProviderCheckouts(expiredPayments);
     await dispatch(invoiceCancelled.create({ invoiceId: id }));
     revalidatePath('/invoices');
     revalidatePath(`/invoices/${id}`);

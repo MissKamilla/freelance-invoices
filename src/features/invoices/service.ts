@@ -129,7 +129,11 @@ export async function issueInvoice(userId: string, id: string, now: Date = new D
 }
 
 export async function cancelInvoice(userId: string, id: string, now: Date = new Date()) {
-  await db.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
+    const pending = await tx.payment.findMany({
+      where: { invoiceId: id, status: 'PENDING', invoice: { userId } },
+      select: { provider: true, externalId: true },
+    });
     const { count } = await tx.invoice.updateMany({
       where: { id, userId, status: 'SENT' },
       data: { status: 'CANCELLED', cancelledAt: now },
@@ -137,6 +141,8 @@ export async function cancelInvoice(userId: string, id: string, now: Date = new 
     if (count === 0) throw new InvoiceError('Скасувати можна лише виставлений неоплачений рахунок');
     await tx.payment.updateMany({ where: { invoiceId: id, status: 'PENDING' }, data: { status: 'EXPIRED' } });
     await tx.invoiceEvent.create({ data: { invoiceId: id, type: 'CANCELLED' } });
+    // Незавершені checkout-и треба закрити й у провайдера — після коміту, у дії.
+    return { expiredPayments: pending };
   });
 }
 
