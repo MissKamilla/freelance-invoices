@@ -14,7 +14,7 @@
 - Апостроф у JSX-тексті — типографський `’` (інакше ESLint `react/no-unescaped-entities`).
 - Стек зафіксований (розділ 4). Не додавати бібліотеки без явної потреби, не замінювати обрані.
 - Коміти маленькі й осмислені, Conventional Commits (`feat(invoices): ...`) — історія комітів оцінюється.
-- Після кожного етапу: `pnpm lint && pnpm typecheck && pnpm test`.
+- Після кожного етапу: `pnpm lint && pnpm typecheck && pnpm test` (+ `pnpm test:integration`, коли змінюється робота з БД; потрібен запущений docker compose).
 - `NOTES.local.md` має бути в `.gitignore`; не згадувати його вміст у коді, README чи комітах.
 
 **Домен і дані**

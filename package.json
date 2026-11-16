@@ -13,6 +13,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
     "format": "prettier --write .",
     "bootstrap": "docker compose up -d --wait && prisma migrate deploy && prisma db seed",
     "db:migrate": "prisma migrate dev",
