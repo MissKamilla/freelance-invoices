@@ -1,0 +1,38 @@
+name: freelance-invoices
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: invoices
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d invoices']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # SMTP-пастка: усі листи застосунку видно на http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
+  # Inngest Dev Server: фонові задачі, UI на http://localhost:8288
+  inngest:
+    image: inngest/inngest:latest
+    command: 'inngest dev -u http://host.docker.internal:3000/api/inngest'
+    ports:
+      - '8288:8288'
+      - '8289:8289'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+volumes:
+  pgdata:
