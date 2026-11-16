@@ -6,7 +6,8 @@ import { InvoiceDocument } from '@/features/invoices/components/InvoiceDocument'
 import { toInvoiceView } from '@/features/invoices/view';
 import { MarkViewed } from '@/features/public/components/MarkViewed';
 import { PaymentPanel } from '@/features/public/components/PaymentPanel';
-import { getPublicInvoice } from '@/features/public/queries';
+import { getPublicInvoice, getReturnedPayment } from '@/features/public/queries';
+import { CardPayment } from '@/features/payments/components/CardPayment';
 import { todayKyiv } from '@/lib/dates';
 
 export async function generateMetadata({ params }: PageProps<'/i/[token]'>): Promise<Metadata> {
@@ -17,10 +18,22 @@ export async function generateMetadata({ params }: PageProps<'/i/[token]'>): Pro
   };
 }
 
-export default async function PublicInvoicePage({ params }: PageProps<'/i/[token]'>) {
-  const { token } = await params;
+export default async function PublicInvoicePage({ params, searchParams }: PageProps<'/i/[token]'>) {
+  const [{ token }, { payment: paymentId }] = await Promise.all([params, searchParams]);
   const invoice = await getPublicInvoice(token);
   if (!invoice) notFound();
+
+  const returnedPayment =
+    typeof paymentId === 'string' ? await getReturnedPayment(invoice.id, paymentId) : null;
+  const returned = returnedPayment && {
+    status:
+      returnedPayment.status === 'PENDING' || returnedPayment.status === 'FAILED'
+        ? returnedPayment.status
+        : returnedPayment.status === 'SUCCEEDED' && invoice.status !== 'PAID'
+          ? ('MISMATCH' as const)
+          : ('OTHER' as const),
+    failureReason: returnedPayment.failureReason,
+  };
 
   const view = toInvoiceView(invoice);
   const overdue = invoice.status === 'SENT' && invoice.dueDate.getTime() < todayKyiv().getTime();
@@ -40,7 +53,13 @@ export default async function PublicInvoicePage({ params }: PageProps<'/i/[token
           <InvoiceDocument view={view} />
         </Box>
         <Box sx={{ order: { xs: 1, md: 2 }, position: { md: 'sticky' }, top: { md: 24 } }}>
-          <PaymentPanel token={token} view={view} paidAt={invoice.paidAt} overdue={overdue} />
+          <PaymentPanel
+            token={token}
+            view={view}
+            paidAt={invoice.paidAt}
+            overdue={overdue}
+            cardPayment={<CardPayment token={token} returned={returned ?? undefined} />}
+          />
         </Box>
       </Box>
     </Container>

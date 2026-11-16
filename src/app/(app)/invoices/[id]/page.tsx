@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
@@ -46,6 +47,8 @@ export default async function InvoicePage({ params }: PageProps<'/invoices/[id]'
 
   const view = toInvoiceView(invoice);
   const publicUrl = invoice.publicToken ? `${env.APP_URL}/i/${invoice.publicToken}` : null;
+  const mismatches = invoice.events.filter((e) => e.type === 'AMOUNT_MISMATCH').length;
+  const refunds = invoice.events.filter((e) => e.type === 'NEEDS_REFUND').length;
 
   return (
     <Stack spacing={3}>
@@ -61,6 +64,17 @@ export default async function InvoicePage({ params }: PageProps<'/invoices/[id]'
         </Stack>
         <Typography color="text.secondary">{view.client.name}</Typography>
       </Box>
+
+      {mismatches > 0 && (
+        <Alert severity="warning">
+          Отримано оплату карткою, сума якої не збігається з рахунком. Перевірте надходження й зв’яжіться з клієнтом.
+        </Alert>
+      )}
+      {refunds > 0 && (
+        <Alert severity="error">
+          Отримано зайву оплату карткою (рахунок уже оплачено або скасовано). Поверніть кошти клієнту.
+        </Alert>
+      )}
 
       <InvoiceActions invoiceId={invoice.id} number={view.number} status={invoice.status} publicUrl={publicUrl} />
 
