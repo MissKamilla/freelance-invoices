@@ -12,12 +12,14 @@
 ```bash
 cp .env.example .env
 pnpm install
-docker compose up -d --wait   # postgres :5433 · mailpit :8025 · inngest :8288
-pnpm dev                      # http://localhost:3000
+pnpm bootstrap   # docker compose (postgres :5433 · mailpit :8025 · inngest :8288) + міграції + демо-дані
+pnpm dev         # http://localhost:3000
 ```
 
+- Демо-акаунт: `demo@freelance.local` / `demo12345` або кнопка «Демо-вхід».
 - Листи: http://localhost:8025 (Mailpit)
 - Фонові задачі: http://localhost:8288 (Inngest Dev Server)
+- Повторний `pnpm db:seed` перестворює демо-акаунт з початковими даними.
 
 ## Стек
 
