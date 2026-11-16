@@ -1,6 +1,7 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { INVALID_REQUEST, parseIdArg } from '@/lib/action-args';
 import { fail, fromZodError, ok, type ActionResult } from '@/lib/action-result';
 import { requireUser } from '@/lib/session';
 import { InvoiceError } from './errors';
@@ -24,8 +25,13 @@ async function guard<T>(fn: () => Promise<ActionResult<T>>): Promise<ActionResul
   }
 }
 
-export async function saveInvoiceDraftAction(input: unknown, id?: string): Promise<ActionResult<{ id: string }>> {
+export async function saveInvoiceDraftAction(
+  input: unknown,
+  idArg?: unknown,
+): Promise<ActionResult<{ id: string }>> {
   const user = await requireUser();
+  const id = idArg === undefined ? undefined : parseIdArg(idArg);
+  if (id === null) return fail(INVALID_REQUEST);
   const parsed = invoiceDraftSchema.safeParse(input);
   if (!parsed.success) return fromZodError(parsed.error);
 
@@ -37,8 +43,10 @@ export async function saveInvoiceDraftAction(input: unknown, id?: string): Promi
   });
 }
 
-export async function deleteDraftAction(id: string): Promise<ActionResult> {
+export async function deleteDraftAction(idArg: unknown): Promise<ActionResult> {
   const user = await requireUser();
+  const id = parseIdArg(idArg);
+  if (!id) return fail(INVALID_REQUEST);
   const result = await guard(async () => {
     await deleteDraft(user.id, id);
     return ok();
@@ -48,8 +56,10 @@ export async function deleteDraftAction(id: string): Promise<ActionResult> {
   redirect('/invoices');
 }
 
-export async function issueInvoiceAction(id: string): Promise<ActionResult<{ number: number }>> {
+export async function issueInvoiceAction(idArg: unknown): Promise<ActionResult<{ number: number }>> {
   const user = await requireUser();
+  const id = parseIdArg(idArg);
+  if (!id) return fail(INVALID_REQUEST);
   return guard(async () => {
     const { number } = await issueInvoice(user.id, id);
     revalidatePath('/invoices');
@@ -58,8 +68,10 @@ export async function issueInvoiceAction(id: string): Promise<ActionResult<{ num
   });
 }
 
-export async function cancelInvoiceAction(id: string): Promise<ActionResult> {
+export async function cancelInvoiceAction(idArg: unknown): Promise<ActionResult> {
   const user = await requireUser();
+  const id = parseIdArg(idArg);
+  if (!id) return fail(INVALID_REQUEST);
   return guard(async () => {
     await cancelInvoice(user.id, id);
     revalidatePath('/invoices');
@@ -68,8 +80,10 @@ export async function cancelInvoiceAction(id: string): Promise<ActionResult> {
   });
 }
 
-export async function markInvoicePaidAction(id: string): Promise<ActionResult> {
+export async function markInvoicePaidAction(idArg: unknown): Promise<ActionResult> {
   const user = await requireUser();
+  const id = parseIdArg(idArg);
+  if (!id) return fail(INVALID_REQUEST);
   return guard(async () => {
     await markInvoicePaidManually(user.id, id);
     revalidatePath('/invoices');
@@ -78,8 +92,10 @@ export async function markInvoicePaidAction(id: string): Promise<ActionResult> {
   });
 }
 
-export async function duplicateInvoiceAction(id: string): Promise<ActionResult> {
+export async function duplicateInvoiceAction(idArg: unknown): Promise<ActionResult> {
   const user = await requireUser();
+  const id = parseIdArg(idArg);
+  if (!id) return fail(INVALID_REQUEST);
   const result = await guard(async () => ok(await duplicateInvoice(user.id, id)));
   if (!result.ok) return result;
   revalidatePath('/invoices');
