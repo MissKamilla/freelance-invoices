@@ -4,8 +4,11 @@ import { redirect } from 'next/navigation';
 import { INVALID_REQUEST, parseIdArg } from '@/lib/action-args';
 import { fail, fromZodError, ok, type ActionResult } from '@/lib/action-result';
 import { requireUser } from '@/lib/session';
-import { safely, sendInvoiceIssuedEmail, sendInvoicePaidEmails } from '@/features/notifications/email';
+import { sendInvoiceIssuedEmail, sendInvoicePaidEmails, sendReminderEmail } from '@/features/notifications/email';
+import { invoiceCancelled, invoiceIssued, invoicePaid, reminderRequested } from '@/inngest/client';
+import { dispatch } from '@/inngest/dispatch';
 import { InvoiceError } from './errors';
+import { getInvoice } from './queries';
 import { invoiceDraftSchema } from './schema';
 import {
   cancelInvoice,
@@ -63,7 +66,7 @@ export async function issueInvoiceAction(idArg: unknown): Promise<ActionResult<{
   if (!id) return fail(INVALID_REQUEST);
   return guard(async () => {
     const { number } = await issueInvoice(user.id, id);
-    await safely(() => sendInvoiceIssuedEmail(id));
+    await dispatch(invoiceIssued.create({ invoiceId: id }), () => sendInvoiceIssuedEmail(id));
     revalidatePath('/invoices');
     revalidatePath(`/invoices/${id}`);
     return ok({ number });
@@ -76,6 +79,7 @@ export async function cancelInvoiceAction(idArg: unknown): Promise<ActionResult>
   if (!id) return fail(INVALID_REQUEST);
   return guard(async () => {
     await cancelInvoice(user.id, id);
+    await dispatch(invoiceCancelled.create({ invoiceId: id }));
     revalidatePath('/invoices');
     revalidatePath(`/invoices/${id}`);
     return ok();
@@ -88,7 +92,9 @@ export async function markInvoicePaidAction(idArg: unknown): Promise<ActionResul
   if (!id) return fail(INVALID_REQUEST);
   return guard(async () => {
     await markInvoicePaidManually(user.id, id);
-    await safely(() => sendInvoicePaidEmails(id, { notifyFreelancer: false }));
+    await dispatch(invoicePaid.create({ invoiceId: id, notifyFreelancer: false }), () =>
+      sendInvoicePaidEmails(id, { notifyFreelancer: false }),
+    );
     revalidatePath('/invoices');
     revalidatePath(`/invoices/${id}`);
     return ok();
@@ -103,4 +109,17 @@ export async function duplicateInvoiceAction(idArg: unknown): Promise<ActionResu
   if (!result.ok) return result;
   revalidatePath('/invoices');
   redirect(`/invoices/${result.data.id}`);
+}
+
+/** Ручне «Нагадати» — лише для виставленого неоплаченого рахунку. */
+export async function remindInvoiceAction(idArg: unknown): Promise<ActionResult> {
+  const user = await requireUser();
+  const id = parseIdArg(idArg);
+  if (!id) return fail(INVALID_REQUEST);
+  const invoice = await getInvoice(user.id, id);
+  if (!invoice || invoice.status !== 'SENT') return fail('Нагадати можна лише про виставлений неоплачений рахунок');
+
+  await dispatch(reminderRequested.create({ invoiceId: id }), () => sendReminderEmail(id, 'manual'));
+  revalidatePath(`/invoices/${id}`);
+  return ok();
 }

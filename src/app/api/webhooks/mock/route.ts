@@ -1,7 +1,9 @@
 import { WebhookSignatureError } from '@/features/payments/errors';
 import { mockProvider } from '@/features/payments/providers/mock';
 import { applyPaymentUpdate } from '@/features/payments/service';
-import { safely, sendInvoicePaidEmails } from '@/features/notifications/email';
+import { sendInvoicePaidEmails } from '@/features/notifications/email';
+import { invoicePaid } from '@/inngest/client';
+import { dispatch } from '@/inngest/dispatch';
 
 export async function POST(request: Request) {
   // Підпис рахуємо по сирому тілу — до будь-якого JSON.parse.
@@ -19,7 +21,7 @@ export async function POST(request: Request) {
     const result = await applyPaymentUpdate(update);
     if (result.outcome === 'paid' && result.invoiceId) {
       const invoiceId = result.invoiceId;
-      await safely(() => sendInvoicePaidEmails(invoiceId));
+      await dispatch(invoicePaid.create({ invoiceId, notifyFreelancer: true }), () => sendInvoicePaidEmails(invoiceId));
     }
     return Response.json({ received: true, outcome: result.outcome });
   } catch (error) {

@@ -2,12 +2,14 @@ import 'server-only';
 import { InvoiceIssuedEmail } from '@/emails/InvoiceIssuedEmail';
 import { InvoicePaidEmail } from '@/emails/InvoicePaidEmail';
 import { PaymentConfirmationEmail } from '@/emails/PaymentConfirmationEmail';
+import { ReminderEmail, reminderSubject } from '@/emails/ReminderEmail';
 import { clientSnapshotSchema, sellerSnapshotSchema } from '@/features/invoices/snapshot';
 import { db } from '@/lib/db';
 import { formatDate, formatDateTime } from '@/lib/dates';
 import { env } from '@/lib/env';
 import { sendEmail } from '@/lib/mailer';
 import { formatMoney } from '@/lib/money';
+import type { ReminderKind } from '@/lib/reminders';
 
 const PROVIDER_LABELS = { MOCK: 'карткою', MONOBANK: 'карткою через monobank', MANUAL: 'переказом на рахунок' } as const;
 
@@ -91,11 +93,25 @@ export async function sendInvoicePaidEmails(invoiceId: string, { notifyFreelance
   }
 }
 
-/** Пошта не повинна ламати основний сценарій: помилку логуємо, рахунок/оплата вже збережені. */
-export async function safely(task: () => Promise<void>) {
-  try {
-    await task();
-  } catch (error) {
-    console.error('[notifications] failed', error);
-  }
+/** Клієнту: нагадування про оплату. Нічого не робить, якщо рахунок уже оплачено чи скасовано. */
+export async function sendReminderEmail(invoiceId: string, kind: ReminderKind) {
+  const data = await loadIssued(invoiceId);
+  if (!data || data.invoice.status !== 'SENT') return { sent: false };
+
+  await sendEmail({
+    to: data.client.email,
+    subject: reminderSubject(kind, data.number),
+    react: (
+      <ReminderEmail
+        kind={kind}
+        sellerName={data.seller.legalName}
+        number={data.number}
+        total={formatMoney(data.invoice.total)}
+        dueDate={formatDate(data.invoice.dueDate)}
+        url={data.publicUrl}
+      />
+    ),
+  });
+  await db.invoiceEvent.create({ data: { invoiceId, type: 'REMINDER_SENT', meta: { kind, to: data.client.email } } });
+  return { sent: true };
 }
