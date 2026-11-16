@@ -1,69 +1,79 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Container from '@mui/material/Container';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import ReceiptLongOutlined from '@mui/icons-material/ReceiptLongOutlined';
+import QrCode2Outlined from '@mui/icons-material/QrCode2Outlined';
+import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActiveOutlined';
+import Link from '@/components/Link';
 
-export default function Home() {
+const features = [
+  {
+    icon: ReceiptLongOutlined,
+    title: 'Рахунок з усіма реквізитами',
+    text: 'РНОКПП, IBAN, сума прописом і призначення платежу — заповнюються автоматично з вашого профілю ФОП.',
+  },
+  {
+    icon: QrCode2Outlined,
+    title: 'Оплата за посиланням',
+    text: 'Клієнт відкриває посилання й платить карткою або сканує QR-код НБУ у застосунку свого банку.',
+  },
+  {
+    icon: NotificationsActiveOutlined,
+    title: 'Статуси й нагадування',
+    text: 'Видно, коли клієнт переглянув і оплатив рахунок. Нагадування про термін оплати надсилаються самі.',
+  },
+];
+
+export default function LandingPage() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <Container maxWidth="md" sx={{ py: { xs: 6, md: 12 } }}>
+      <Stack spacing={3} sx={{ textAlign: 'center', alignItems: 'center' }}>
+        <Typography variant="overline" color="primary">
+          Freelance Invoices
+        </Typography>
+        <Typography variant="h3" component="h1" sx={{ fontSize: { xs: 32, md: 48 } }}>
+          Рахунок за хвилину — оплата в один клік
+        </Typography>
+        <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 560 }}>
+          Виставляйте рахунки клієнтам як ФОП і отримуйте оплату за посиланням — без Word, ручних
+          підрахунків і переписування реквізитів.
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <Button component={Link} href="/register" variant="contained" size="large">
+            Спробувати
+          </Button>
+          <Button component={Link} href="/login" variant="outlined" size="large">
+            Увійти
+          </Button>
+        </Stack>
+      </Stack>
+
+      <Box
+        sx={{
+          mt: { xs: 6, md: 10 },
+          display: 'grid',
+          gap: 2,
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+        }}
+      >
+        {features.map(({ icon: Icon, title, text }) => (
+          <Card key={title}>
+            <CardContent>
+              <Icon color="primary" sx={{ mb: 1 }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                {title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {text}
+              </Typography>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+    </Container>
   );
 }
