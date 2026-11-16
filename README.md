@@ -118,7 +118,7 @@ sequenceDiagram
     App->>P: createCheckout
     App-->>C: redirect на сторінку оплати
     C->>P: дані картки
-    P->>App: вебхук (HMAC-підпис)
+    P->>App: вебхук (підпис HMAC у mock, ECDSA у monobank)
     App->>DB: одна транзакція: дедуп події → рішення → платіж/рахунок/історія
     App->>I: invoice/paid
     I-->>C: лист «оплату отримано»
