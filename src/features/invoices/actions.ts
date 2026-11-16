@@ -5,7 +5,15 @@ import { fail, fromZodError, ok, type ActionResult } from '@/lib/action-result';
 import { requireUser } from '@/lib/session';
 import { InvoiceError } from './errors';
 import { invoiceDraftSchema } from './schema';
-import { createDraft, deleteDraft, updateDraft } from './service';
+import {
+  cancelInvoice,
+  createDraft,
+  deleteDraft,
+  duplicateInvoice,
+  issueInvoice,
+  markInvoicePaidManually,
+  updateDraft,
+} from './service';
 
 async function guard<T>(fn: () => Promise<ActionResult<T>>): Promise<ActionResult<T>> {
   try {
@@ -38,4 +46,42 @@ export async function deleteDraftAction(id: string): Promise<ActionResult> {
   if (!result.ok) return result;
   revalidatePath('/invoices');
   redirect('/invoices');
+}
+
+export async function issueInvoiceAction(id: string): Promise<ActionResult<{ number: number }>> {
+  const user = await requireUser();
+  return guard(async () => {
+    const { number } = await issueInvoice(user.id, id);
+    revalidatePath('/invoices');
+    revalidatePath(`/invoices/${id}`);
+    return ok({ number });
+  });
+}
+
+export async function cancelInvoiceAction(id: string): Promise<ActionResult> {
+  const user = await requireUser();
+  return guard(async () => {
+    await cancelInvoice(user.id, id);
+    revalidatePath('/invoices');
+    revalidatePath(`/invoices/${id}`);
+    return ok();
+  });
+}
+
+export async function markInvoicePaidAction(id: string): Promise<ActionResult> {
+  const user = await requireUser();
+  return guard(async () => {
+    await markInvoicePaidManually(user.id, id);
+    revalidatePath('/invoices');
+    revalidatePath(`/invoices/${id}`);
+    return ok();
+  });
+}
+
+export async function duplicateInvoiceAction(id: string): Promise<ActionResult> {
+  const user = await requireUser();
+  const result = await guard(async () => ok(await duplicateInvoice(user.id, id)));
+  if (!result.ok) return result;
+  revalidatePath('/invoices');
+  redirect(`/invoices/${result.data.id}`);
 }

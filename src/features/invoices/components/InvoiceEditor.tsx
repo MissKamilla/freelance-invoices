@@ -20,6 +20,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import AddOutlined from '@mui/icons-material/AddOutlined';
 import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import PersonAddOutlined from '@mui/icons-material/PersonAddOutlined';
+import SendOutlined from '@mui/icons-material/SendOutlined';
 import Link from '@/components/Link';
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
 import { useNotify } from '@/components/feedback/SnackbarProvider';
@@ -28,7 +29,7 @@ import { amountInWordsUk } from '@/lib/amount-in-words';
 import { applyServerErrors, muiField } from '@/lib/form';
 import { calcLineAmount } from '@/lib/invoice-calc';
 import { formatAmount, formatMoney, parseMoney, parseQuantity } from '@/lib/money';
-import { deleteDraftAction, saveInvoiceDraftAction } from '../actions';
+import { deleteDraftAction, issueInvoiceAction, saveInvoiceDraftAction } from '../actions';
 import { emptyItem, invoiceDraftSchema, UNITS, type InvoiceDraftInput, type InvoiceItemInput } from '../schema';
 
 type ClientOption = { id: string; name: string };
@@ -60,20 +61,32 @@ export function InvoiceEditor({ invoiceId, clients: initialClients, defaultValue
   const total = (items ?? []).reduce((sum, item) => sum + lineAmount(item), 0);
   const itemsError = form.formState.errors.items?.root?.message ?? form.formState.errors.items?.message;
 
+  const [intent, setIntent] = useState<'save' | 'issue'>('save');
+
   // На сервер відправляємо «сирі» значення форми: схема там розбере їх ще раз.
-  const onSubmit = form.handleSubmit(async () => {
-    const values = form.getValues();
-    const result = await saveInvoiceDraftAction(values, invoiceId);
-    if (!result.ok) {
-      applyServerErrors(form, result);
-      notify(result.error, 'error');
-      return;
-    }
-    notify('Чернетку збережено');
-    form.reset(values);
-    if (invoiceId) router.refresh();
-    else router.push(`/invoices/${result.data.id}`);
-  });
+  const submit = (mode: 'save' | 'issue') =>
+    form.handleSubmit(async () => {
+      setIntent(mode);
+      const values = form.getValues();
+      const saved = await saveInvoiceDraftAction(values, invoiceId);
+      if (!saved.ok) {
+        applyServerErrors(form, saved);
+        notify(saved.error, 'error');
+        return;
+      }
+      form.reset(values);
+      const id = saved.data.id;
+
+      if (mode === 'issue') {
+        const issued = await issueInvoiceAction(id);
+        notify(issued.ok ? `Рахунок № ${issued.data.number} виставлено` : issued.error, issued.ok ? 'success' : 'error');
+      } else {
+        notify('Чернетку збережено');
+      }
+
+      if (invoiceId) router.refresh();
+      else router.push(`/invoices/${id}`);
+    });
 
   const onDelete = async () => {
     if (!invoiceId) return;
@@ -86,7 +99,7 @@ export function InvoiceEditor({ invoiceId, clients: initialClients, defaultValue
   };
 
   return (
-    <Box component="form" onSubmit={onSubmit} noValidate>
+    <Box component="form" onSubmit={submit('save')} noValidate>
       <Stack spacing={3}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
@@ -96,15 +109,33 @@ export function InvoiceEditor({ invoiceId, clients: initialClients, defaultValue
           <Typography variant="h4" component="h1">
             {invoiceId ? 'Чернетка рахунку' : 'Новий рахунок'}
           </Typography>
-          <Stack direction="row" spacing={1}>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
             {invoiceId && (
               <Button color="error" startIcon={<DeleteOutlined />} onClick={() => setConfirmDelete(true)}>
                 Видалити
               </Button>
             )}
-            <Button type="submit" variant="contained" loading={form.formState.isSubmitting}>
+            <Button
+              type="submit"
+              variant="outlined"
+              loading={form.formState.isSubmitting && intent === 'save'}
+              disabled={form.formState.isSubmitting}
+            >
               Зберегти чернетку
             </Button>
+            <Tooltip title={hasProfile ? '' : 'Спершу заповніть реквізити ФОП'}>
+              <span>
+                <Button
+                  variant="contained"
+                  startIcon={<SendOutlined />}
+                  onClick={submit('issue')}
+                  loading={form.formState.isSubmitting && intent === 'issue'}
+                  disabled={!hasProfile || form.formState.isSubmitting}
+                >
+                  Виставити
+                </Button>
+              </span>
+            </Tooltip>
           </Stack>
         </Stack>
 

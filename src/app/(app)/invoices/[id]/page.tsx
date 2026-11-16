@@ -1,10 +1,23 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined';
+import Link from '@/components/Link';
+import { InvoiceActions } from '@/features/invoices/components/InvoiceActions';
+import { InvoiceDocument } from '@/features/invoices/components/InvoiceDocument';
 import { InvoiceEditor } from '@/features/invoices/components/InvoiceEditor';
+import { InvoiceStatusChip } from '@/features/invoices/components/InvoiceStatusChip';
+import { InvoiceTimeline } from '@/features/invoices/components/InvoiceTimeline';
 import { toDraftFormValues } from '@/features/invoices/mappers';
 import { getInvoice, listClientOptions } from '@/features/invoices/queries';
+import { toInvoiceView } from '@/features/invoices/view';
 import { getProfile } from '@/features/profile/queries';
+import { todayKyiv } from '@/lib/dates';
+import { env } from '@/lib/env';
+import { getDisplayStatus } from '@/lib/invoice-status';
 import { requireUser } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Рахунок' };
@@ -31,9 +44,37 @@ export default async function InvoicePage({ params }: PageProps<'/invoices/[id]'
     );
   }
 
+  const view = toInvoiceView(invoice);
+  const publicUrl = invoice.publicToken ? `${env.APP_URL}/i/${invoice.publicToken}` : null;
+
   return (
-    <Typography variant="h4" component="h1">
-      Рахунок № {invoice.number}
-    </Typography>
+    <Stack spacing={3}>
+      <Box>
+        <Button component={Link} href="/invoices" startIcon={<ArrowBackOutlined />} sx={{ mb: 1 }}>
+          Рахунки
+        </Button>
+        <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <Typography variant="h4" component="h1">
+            Рахунок № {view.number}
+          </Typography>
+          <InvoiceStatusChip status={getDisplayStatus(invoice, todayKyiv())} size="medium" />
+        </Stack>
+        <Typography color="text.secondary">{view.client.name}</Typography>
+      </Box>
+
+      <InvoiceActions invoiceId={invoice.id} number={view.number} status={invoice.status} publicUrl={publicUrl} />
+
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 3,
+          alignItems: 'start',
+          gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 340px' },
+        }}
+      >
+        <InvoiceDocument view={view} />
+        <InvoiceTimeline events={invoice.events} payments={invoice.payments} />
+      </Box>
+    </Stack>
   );
 }
