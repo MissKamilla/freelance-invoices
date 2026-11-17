@@ -2,6 +2,7 @@ name: freelance-invoices
 
 # Порти прив'язані до 127.0.0.1: база з паролем за замовчуванням і листи з реквізитами
 # не мають бути доступні з локальної мережі. Версії образів закріплені для відтворюваності.
+# Mailpit, Redis і Inngest зберігають дані в томах: листи й заплановані нагадування переживають перезапуск Docker.
 
 services:
   postgres:
@@ -23,19 +24,54 @@ services:
   # SMTP-пастка: усі листи застосунку видно на http://localhost:8025
   mailpit:
     image: axllent/mailpit:v1.33.1
+    environment:
+      MP_DATABASE: /data/mailpit.db
     ports:
       - '127.0.0.1:1025:1025'
       - '127.0.0.1:8025:8025'
+    volumes:
+      - mailpitdata:/data
 
-  # Inngest Dev Server: фонові задачі, UI на http://localhost:8288
+  # Черга й стан фонових задач Inngest. Inngest Dev Server тримає їх лише в пам'яті, тож після перезапуску Docker
+  # нагадування, що «сплять» до терміну оплати, зникали. Redis з AOF на диску зберігає їх.
+  redis:
+    image: redis:7.4-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Inngest (self-hosted): фонові задачі, UI на http://localhost:8288.
+  # Ключі локальні й мають збігатися з INNGEST_EVENT_KEY / INNGEST_SIGNING_KEY у .env (див. .env.example).
   inngest:
     image: inngest/inngest:v1.53.0
-    command: 'inngest dev -u http://host.docker.internal:3000/api/inngest'
+    command: >-
+      inngest start
+      --sdk-url http://host.docker.internal:3000/api/inngest
+      --poll-interval 5
+      --event-key local-inngest-event-key
+      --signing-key 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      --redis-uri redis://redis:6379
+      --sqlite-dir /data
+    depends_on:
+      redis:
+        condition: service_healthy
+    # Після перезапуску Docker Redis може піднятися пізніше — Inngest тоді завершується й перезапускається.
+    restart: unless-stopped
     ports:
       - '127.0.0.1:8288:8288'
       - '127.0.0.1:8289:8289'
+    volumes:
+      - inngestdata:/data
     extra_hosts:
       - 'host.docker.internal:host-gateway'
 
 volumes:
   pgdata:
+  mailpitdata:
+  redisdata:
+  inngestdata:

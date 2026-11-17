@@ -8,7 +8,8 @@ const VALID_LOCAL = {
   DEMO_MODE: 'true',
   PAYMENT_PROVIDER: 'mock',
   MOCK_WEBHOOK_SECRET: 'local-mock-webhook-secret',
-  INNGEST_DEV: '1',
+  INNGEST_DEV: '0',
+  INNGEST_SIGNING_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 };
 
 async function loadEnv(overrides: Record<string, string>) {
@@ -28,6 +29,12 @@ describe('env', () => {
     expect(env.DEMO_MODE).toBe(true);
     expect(env.PAYMENT_PROVIDER).toBe('mock');
     expect(demoOnlySettings).toHaveLength(5);
+    expect(demoOnlySettings).toContain('INNGEST_SIGNING_KEY з .env.example');
+  });
+
+  it('Inngest Dev Server (INNGEST_DEV=1, без підпису запитів) теж лише для локального запуску', async () => {
+    const { demoOnlySettings } = await loadEnv({ NODE_ENV: 'development', INNGEST_DEV: '1' });
+    expect(demoOnlySettings).toContain('INNGEST_DEV=1');
   });
 
   it('відхиляє monobank без токена', async () => {
@@ -65,6 +72,7 @@ describe('env', () => {
       BETTER_AUTH_SECRET: 'a-real-secret-that-is-at-least-32-chars-long',
       MOCK_WEBHOOK_SECRET: 'another-real-secret',
       INNGEST_DEV: '',
+      INNGEST_SIGNING_KEY: 'f'.repeat(64),
     });
     expect(demoOnlySettings).toEqual([]);
     expect(warn).not.toHaveBeenCalled();

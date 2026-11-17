@@ -34,10 +34,14 @@ if (!parsed.success) {
 export const env = parsed.data;
 
 // ─── Запобіжник для production ──────────────────────────────────────────────
-// .env.example навмисно вмикає демо-акаунт, mock-оплату, Inngest без підпису й відомі секрети — це безпечно лише
+// .env.example навмисно вмикає демо-акаунт, mock-оплату й відомі секрети (зокрема ключ Inngest) — це безпечно лише
 // локально. Production-збірка з публічним APP_URL і такими налаштуваннями не стартує; з localhost — лише попередження,
 // щоб `pnpm build && pnpm start` для перевірки збірки працював.
-const EXAMPLE_SECRETS = new Set(['local-dev-secret-change-me-0123456789abcdef', 'local-mock-webhook-secret']);
+const EXAMPLE_SECRETS = new Set([
+  'local-dev-secret-change-me-0123456789abcdef',
+  'local-mock-webhook-secret',
+  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+]);
 const isLocalUrl = (url: string) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(url);
 
 export const demoOnlySettings = [
@@ -46,6 +50,7 @@ export const demoOnlySettings = [
   process.env.INNGEST_DEV === '1' && 'INNGEST_DEV=1',
   EXAMPLE_SECRETS.has(env.BETTER_AUTH_SECRET) && 'BETTER_AUTH_SECRET з .env.example',
   EXAMPLE_SECRETS.has(env.MOCK_WEBHOOK_SECRET) && 'MOCK_WEBHOOK_SECRET з .env.example',
+  EXAMPLE_SECRETS.has(process.env.INNGEST_SIGNING_KEY ?? '') && 'INNGEST_SIGNING_KEY з .env.example',
 ].filter((item): item is string => typeof item === 'string');
 
 if (process.env.NODE_ENV === 'production' && demoOnlySettings.length > 0) {
