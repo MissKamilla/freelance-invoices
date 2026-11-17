@@ -54,6 +54,16 @@ describe('toProviderUpdate', () => {
     expect(update.occurredAt.toISOString()).toBe('2026-11-16T10:01:30.000Z');
   });
 
+  it('сума — finalAmount (після повернень і часткового списання), без нього — amount', () => {
+    const base = JSON.parse(webhookBody);
+    expect(toProviderUpdate(monobankInvoiceSchema.parse({ ...base, finalAmount: 2_000_000 }))).toMatchObject({
+      amount: 2_000_000,
+    });
+    expect(toProviderUpdate(monobankInvoiceSchema.parse({ ...base, finalAmount: undefined }))).toMatchObject({
+      amount: 2_850_000,
+    });
+  });
+
   it('відхиляє не гривню', () => {
     const invoice = monobankInvoiceSchema.parse({ ...JSON.parse(webhookBody), ccy: 840 });
     expect(() => toProviderUpdate(invoice)).toThrow('Unsupported');

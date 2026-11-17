@@ -27,12 +27,21 @@ async function monobankRequest<T>(path: string, init?: RequestInit): Promise<T> 
 // на потік наших запитів до банку.
 const PUBKEY_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 let publicKeyCache: { key: string; fetchedAt: number } | null = null;
+let publicKeyRequest: Promise<string> | null = null;
 async function getPublicKey(refresh = false): Promise<string> {
-  if (!publicKeyCache || (refresh && Date.now() - publicKeyCache.fetchedAt > PUBKEY_REFRESH_INTERVAL_MS)) {
-    const { key } = await monobankRequest<{ key: string }>('/api/merchant/pubkey');
-    publicKeyCache = { key, fetchedAt: Date.now() };
+  if (publicKeyCache && !(refresh && Date.now() - publicKeyCache.fetchedAt > PUBKEY_REFRESH_INTERVAL_MS)) {
+    return publicKeyCache.key;
   }
-  return publicKeyCache.key;
+  // Один запит на всіх, хто чекає: паралельні вебхуки на холодному кеші не породжують N звернень до банку.
+  publicKeyRequest ??= monobankRequest<{ key: string }>('/api/merchant/pubkey')
+    .then(({ key }) => {
+      publicKeyCache = { key, fetchedAt: Date.now() };
+      return key;
+    })
+    .finally(() => {
+      publicKeyRequest = null;
+    });
+  return publicKeyRequest;
 }
 
 export const monobankProvider: PaymentProvider = {

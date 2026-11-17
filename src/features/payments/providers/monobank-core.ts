@@ -48,7 +48,8 @@ export function toProviderUpdate(invoice: MonobankInvoice): ProviderPaymentUpdat
     dedupeKey: `${invoice.invoiceId}:${invoice.status}:${invoice.modifiedDate}`,
     externalId: invoice.invoiceId,
     status: mapMonobankStatus(invoice.status),
-    amount: invoice.amount,
+    // finalAmount — «фінальна сума після повернень» (docs monobank): реально списане; без нього — amount.
+    amount: invoice.finalAmount ?? invoice.amount,
     currency: 'UAH',
     occurredAt: new Date(invoice.modifiedDate),
     failureReason: invoice.failureReason ?? (invoice.errCode ? `Код помилки ${invoice.errCode}` : undefined),

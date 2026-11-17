@@ -163,3 +163,18 @@ describe('reconcilePayment (звірка без вебхука)', () => {
     expect(await reconcilePayment(payment.id, 'wrong-token')).toBeNull();
   });
 });
+
+describe('monobank pubkey cache', () => {
+  it('паралельні вебхуки на холодному кеші роблять один запит публічного ключа', async () => {
+    const fetchMock = stubMonobankApi();
+    vi.resetModules(); // свіжий модуль = порожній кеш ключа
+    const { monobankProvider: fresh } = await import('./providers/monobank');
+    const body = JSON.stringify(statusBody('p2_cold'));
+    const headers = new Headers({ 'x-sign': sign(body) });
+
+    const updates = await Promise.all(Array.from({ length: 5 }, () => fresh.verifyAndParseWebhook(body, headers)));
+
+    expect(updates.every((u) => u.status === 'SUCCEEDED')).toBe(true);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/merchant/pubkey'))).toHaveLength(1);
+  });
+});
