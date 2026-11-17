@@ -37,7 +37,8 @@ export async function payWithMockCardAction(paymentIdArg: unknown, cardNumberArg
     where: { id: paymentId },
     include: { invoice: { select: { publicToken: true } } },
   });
-  if (!payment || payment.provider !== 'MOCK' || payment.status !== 'PENDING' || !payment.externalId) {
+  const expired = payment?.expiresAt !== null && payment?.expiresAt !== undefined && payment.expiresAt <= new Date();
+  if (!payment || payment.provider !== 'MOCK' || payment.status !== 'PENDING' || !payment.externalId || expired) {
     return fail('Платіж неактуальний — поверніться до рахунку й почніть оплату знову');
   }
 
@@ -53,15 +54,22 @@ export async function payWithMockCardAction(paymentIdArg: unknown, cardNumberArg
   };
   const body = JSON.stringify(event);
 
-  const response = await fetch(`${env.APP_URL}/api/webhooks/mock`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      [MOCK_SIGNATURE_HEADER]: hmacSha256Hex(env.MOCK_WEBHOOK_SECRET, body),
-    },
-    body,
-  });
-  if (!response.ok) return fail('Платіжний шлюз тимчасово недоступний, спробуйте ще раз');
+  // «Банк» доставляє вебхук на APP_URL; якщо застосунок недоступний за цією адресою — це помилка шлюзу, не 500.
+  let delivered = false;
+  try {
+    const response = await fetch(`${env.APP_URL}/api/webhooks/mock`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        [MOCK_SIGNATURE_HEADER]: hmacSha256Hex(env.MOCK_WEBHOOK_SECRET, body),
+      },
+      body,
+    });
+    delivered = response.ok;
+  } catch (error) {
+    console.error('[payments] mock webhook delivery failed', error);
+  }
+  if (!delivered) return fail('Платіжний шлюз тимчасово недоступний, спробуйте ще раз');
 
   redirect(`/i/${payment.invoice.publicToken}?payment=${payment.id}`);
 }
