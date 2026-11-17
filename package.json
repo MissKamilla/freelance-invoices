@@ -31,6 +31,7 @@
     "@mui/icons-material": "^9.5.0",
     "@mui/material": "^9.5.0",
     "@mui/material-nextjs": "^9.5.0",
+    "@mui/x-charts": "^9.18.1",
     "@mui/x-date-pickers": "^9.18.0",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",

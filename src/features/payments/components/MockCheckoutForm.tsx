@@ -4,7 +4,6 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
 import Link from '@/components/Link';
 import { formatMoney } from '@/lib/money';
 import { payWithMockCardAction } from '../actions';
@@ -38,10 +37,11 @@ export function MockCheckoutForm({ paymentId, amount, backUrl }: MockCheckoutFor
         <TextField label="Термін дії" defaultValue="12/30" slotProps={{ htmlInput: { autoComplete: 'cc-exp' } }} />
         <TextField label="CVV" defaultValue="123" type="password" slotProps={{ htmlInput: { autoComplete: 'cc-csc' } }} />
       </Stack>
-      <Typography variant="caption" color="text.secondary">
-        Тестові картки: {formatCard(MOCK_CARDS.success)} — успіх · {formatCard(MOCK_CARDS.declined)} — відмова ·{' '}
-        {formatCard(MOCK_CARDS.amountMismatch)} — списано на 1 коп. менше
-      </Typography>
+      <Stack component="ul" spacing={0.25} sx={{ m: 0, pl: 2, color: 'text.secondary', typography: 'caption' }}>
+        <li>{formatCard(MOCK_CARDS.success)} — успішна оплата</li>
+        <li>{formatCard(MOCK_CARDS.declined)} — відмова банку</li>
+        <li>{formatCard(MOCK_CARDS.amountMismatch)} — списано на 1 коп. менше</li>
+      </Stack>
       <Button type="submit" variant="contained" size="large" loading={pending}>
         Оплатити {formatMoney(amount)}
       </Button>

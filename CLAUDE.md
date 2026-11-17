@@ -51,6 +51,7 @@
   Якщо CLI не впорається з Prisma 7 — перенести 4 моделі (User, Session, Account, Verification) з документації вручну.
 - MUI v9 + `@mui/x-*` тієї ж мажорної версії (v9). Тему створювати у файлі з `'use client'`.
   Дати — `LocalizationProvider` + dayjs з локаллю `uk`. Лише компоненти MUI і токени теми, без хардкод-кольорів.
+- У **Server Components** не передавати JSX-елементи в пропси, які MUI клонує (`Stack divider`, `Tabs`/`ToggleButtonGroup` children тощо): SSR падає з «Element type is invalid… undefined». Роздільники — через `sx`, або рендерити в клієнтському компоненті.
 
 **UX-стани (обов'язково для кожної сторінки)**
 - `loading.tsx` (Skeleton), `error.tsx`, `not-found.tsx`; порожні стани списків.
