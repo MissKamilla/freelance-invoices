@@ -39,6 +39,7 @@
     "better-auth": "^1.7.25",
     "dayjs": "^1.11.23",
     "dotenv": "^18.0.10",
+    "inngest": "^4.26.2",
     "nanoid": "^6.0.2",
     "next": "16.4.6",
     "nodemailer": "^10.6.0",

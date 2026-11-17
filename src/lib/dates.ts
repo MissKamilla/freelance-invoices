@@ -62,3 +62,20 @@ export function formatDateLong(date: Date): string {
 export function formatDateTime(date: Date): string {
   return dateTimeKyiv.format(date);
 }
+
+const kyivOffsetFormat = new Intl.DateTimeFormat('en-US', { timeZone: KYIV_TZ, timeZoneName: 'longOffset' });
+
+/** Зсув Києва від UTC у хвилинах на заданий момент (120 взимку, 180 влітку). */
+export function kyivOffsetMinutes(moment: Date): number {
+  const name = kyivOffsetFormat.formatToParts(moment).find((p) => p.type === 'timeZoneName')?.value ?? '';
+  const match = /GMT([+-])(\d{2}):(\d{2})/.exec(name);
+  if (!match) return 0;
+  const minutes = Number(match[2]) * 60 + Number(match[3]);
+  return match[1] === '-' ? -minutes : minutes;
+}
+
+/** Календарний день (UTC-північ) + година за Києвом → момент часу. */
+export function atKyivTime(day: Date, hour: number): Date {
+  const naive = new Date(day.getTime() + hour * 3_600_000);
+  return new Date(naive.getTime() - kyivOffsetMinutes(naive) * 60_000);
+}

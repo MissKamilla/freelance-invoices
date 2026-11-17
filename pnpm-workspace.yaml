@@ -3,5 +3,6 @@ onlyBuiltDependencies:
   - esbuild
   - prisma
 ignoredBuiltDependencies:
+  - protobufjs
   - sharp
   - unrs-resolver

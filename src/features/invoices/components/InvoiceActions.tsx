@@ -7,11 +7,12 @@ import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
 import ContentPasteGoOutlined from '@mui/icons-material/ContentPasteGoOutlined';
 import BlockOutlined from '@mui/icons-material/BlockOutlined';
 import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined';
+import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActiveOutlined';
 import type { InvoiceStatus } from '@/generated/prisma/enums';
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
 import { useNotify } from '@/components/feedback/SnackbarProvider';
 import type { ActionResult } from '@/lib/action-result';
-import { cancelInvoiceAction, duplicateInvoiceAction, markInvoicePaidAction } from '../actions';
+import { cancelInvoiceAction, duplicateInvoiceAction, markInvoicePaidAction, remindInvoiceAction } from '../actions';
 
 type Confirm = 'paid' | 'cancel' | null;
 
@@ -50,6 +51,16 @@ export function InvoiceActions({ invoiceId, number, status, publicUrl }: Invoice
       {publicUrl && status !== 'CANCELLED' && (
         <Button variant="outlined" startIcon={<FileDownloadOutlined />} href={`${publicUrl}/pdf`}>
           PDF
+        </Button>
+      )}
+      {status === 'SENT' && (
+        <Button
+          variant="outlined"
+          startIcon={<NotificationsActiveOutlined />}
+          disabled={pending}
+          onClick={() => run(() => remindInvoiceAction(invoiceId), 'Нагадування надіслано клієнту')}
+        >
+          Нагадати
         </Button>
       )}
       {status === 'SENT' && (
