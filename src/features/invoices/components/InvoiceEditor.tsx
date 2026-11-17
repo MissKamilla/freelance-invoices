@@ -28,7 +28,7 @@ import { ClientDialog } from '@/features/clients/components/ClientDialog';
 import { amountInWordsUk } from '@/lib/amount-in-words';
 import { applyServerErrors, muiField } from '@/lib/form';
 import { calcLineAmount } from '@/lib/invoice-calc';
-import { formatAmount, formatMoney, parseMoney, parseQuantity } from '@/lib/money';
+import { formatAmount, formatMoney, MAX_INVOICE_TOTAL, parseMoney, parseQuantity } from '@/lib/money';
 import { deleteDraftAction, issueInvoiceAction, saveInvoiceDraftAction } from '../actions';
 import { emptyItem, invoiceDraftSchema, UNITS, type InvoiceDraftInput, type InvoiceItemInput } from '../schema';
 
@@ -61,46 +61,76 @@ export function InvoiceEditor({ invoiceId, clients: initialClients, defaultValue
   const total = (items ?? []).reduce((sum, item) => sum + lineAmount(item), 0);
   const itemsError = form.formState.errors.items?.root?.message ?? form.formState.errors.items?.message;
 
-  const [intent, setIntent] = useState<'save' | 'issue'>('save');
+  // Власний стан замість formState.isSubmitting: form.reset() посеред сабміту скидає isSubmitting, і кнопки
+  // ставали активними під час виставлення — повторний клік на /invoices/new створював дублікат чернетки.
+  const [busy, setBusy] = useState<'save' | 'issue' | null>(null);
+  const pending = busy !== null || form.formState.isSubmitting;
 
   // На сервер відправляємо «сирі» значення форми: схема там розбере їх ще раз.
   const submit = (mode: 'save' | 'issue') =>
     form.handleSubmit(async () => {
-      setIntent(mode);
+      setBusy(mode);
       const values = form.getValues();
-      const saved = await saveInvoiceDraftAction(values, invoiceId);
-      if (!saved.ok) {
-        applyServerErrors(form, saved);
-        notify(saved.error, 'error');
+      let savedId: string | null = null;
+      try {
+        const saved = await saveInvoiceDraftAction(values, invoiceId);
+        if (!saved.ok) {
+          applyServerErrors(form, saved);
+          notify(saved.error, 'error');
+          setBusy(null);
+          return;
+        }
+        savedId = saved.data.id;
+
+        if (mode === 'issue') {
+          const issued = await issueInvoiceAction(savedId);
+          notify(
+            issued.ok ? `Рахунок № ${issued.data.number} виставлено` : issued.error,
+            issued.ok ? 'success' : 'error',
+          );
+        } else {
+          notify('Чернетку збережено');
+        }
+      } catch (error) {
+        // Мережа чи непередбачена помилка сервера: без цього — unhandled rejection і жодного повідомлення.
+        console.error('[invoice-editor]', error);
+        notify(
+          savedId
+            ? 'Чернетку збережено, але виставити не вдалося — спробуйте ще раз'
+            : 'Не вдалося зберегти чернетку — перевірте з’єднання й спробуйте ще раз',
+          'error',
+        );
+      }
+      if (!savedId) {
+        setBusy(null);
         return;
       }
+
       form.reset(values);
-      const id = saved.data.id;
-
-      if (mode === 'issue') {
-        const issued = await issueInvoiceAction(id);
-        notify(
-          issued.ok ? `Рахунок № ${issued.data.number} виставлено` : issued.error,
-          issued.ok ? 'success' : 'error',
-        );
+      if (invoiceId) {
+        router.refresh();
+        setBusy(null);
       } else {
-        notify('Чернетку збережено');
+        // Кнопки лишаються заблокованими до переходу на сторінку збереженої чернетки.
+        router.push(`/invoices/${savedId}`);
       }
-
-      if (invoiceId) router.refresh();
-      else router.push(`/invoices/${id}`);
     });
 
   const onDelete = async () => {
     if (!invoiceId) return;
     setDeleting(true);
-    const result = await deleteDraftAction(invoiceId);
-    if (result.ok) {
-      notify('Чернетку видалено');
-      router.replace('/invoices');
-      return;
+    try {
+      const result = await deleteDraftAction(invoiceId);
+      if (result.ok) {
+        notify('Чернетку видалено');
+        router.replace('/invoices');
+        return;
+      }
+      notify(result.error, 'error');
+    } catch (error) {
+      console.error('[invoice-editor]', error);
+      notify('Не вдалося видалити чернетку — спробуйте ще раз', 'error');
     }
-    notify(result.error, 'error');
     setDeleting(false);
     setConfirmDelete(false);
   };
@@ -118,16 +148,16 @@ export function InvoiceEditor({ invoiceId, clients: initialClients, defaultValue
           </Typography>
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
             {invoiceId && (
-              <Button color="error" startIcon={<DeleteOutlined />} onClick={() => setConfirmDelete(true)}>
+              <Button
+                color="error"
+                startIcon={<DeleteOutlined />}
+                onClick={() => setConfirmDelete(true)}
+                disabled={pending}
+              >
                 Видалити
               </Button>
             )}
-            <Button
-              type="submit"
-              variant="outlined"
-              loading={form.formState.isSubmitting && intent === 'save'}
-              disabled={form.formState.isSubmitting}
-            >
+            <Button type="submit" variant="outlined" loading={busy === 'save'} disabled={pending}>
               Зберегти чернетку
             </Button>
             <Tooltip title={hasProfile ? '' : 'Спершу заповніть реквізити ФОП'}>
@@ -136,8 +166,8 @@ export function InvoiceEditor({ invoiceId, clients: initialClients, defaultValue
                   variant="contained"
                   startIcon={<SendOutlined />}
                   onClick={submit('issue')}
-                  loading={form.formState.isSubmitting && intent === 'issue'}
-                  disabled={!hasProfile || form.formState.isSubmitting}
+                  loading={busy === 'issue'}
+                  disabled={!hasProfile || pending}
                 >
                   Виставити
                 </Button>
@@ -211,6 +241,7 @@ export function InvoiceEditor({ invoiceId, clients: initialClients, defaultValue
                 render={({ field, fieldState }) => (
                   <DatePicker
                     label="Оплатити до"
+                    disablePast
                     value={field.value ? dayjs(field.value) : null}
                     onChange={(value) => field.onChange(value?.isValid() ? value.format('YYYY-MM-DD') : '')}
                     slotProps={{
@@ -321,10 +352,17 @@ export function InvoiceEditor({ invoiceId, clients: initialClients, defaultValue
               <Typography variant="h6" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                 Разом до сплати: {formatMoney(total)}
               </Typography>
-              {total > 0 && (
-                <Typography variant="body2" color="text.secondary">
-                  {amountInWordsUk(total)}. Без ПДВ
+              {/* Сума прописом підтримує до 10 млн ₴; більшу суму не пропустить і схема на сервері. */}
+              {total > MAX_INVOICE_TOTAL ? (
+                <Typography variant="body2" color="error">
+                  Сума рахунку не може перевищувати {formatMoney(MAX_INVOICE_TOTAL)}
                 </Typography>
+              ) : (
+                total > 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    {amountInWordsUk(total)}. Без ПДВ
+                  </Typography>
+                )
               )}
             </Stack>
           </CardContent>
