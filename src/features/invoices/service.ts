@@ -69,6 +69,9 @@ export async function deleteDraft(userId: string, id: string) {
  */
 export async function issueInvoice(userId: string, id: string, now: Date = new Date()) {
   return db.$transaction(async (tx) => {
+    // Блокуємо рядок до читання: паралельне збереження чернетки з іншої вкладки дочекається коміту,
+    // і знімок клієнта/позицій відповідатиме тому, що реально виставлено.
+    await tx.$queryRaw`SELECT id FROM "invoice" WHERE id = ${id} FOR UPDATE`;
     const invoice = await tx.invoice.findFirst({
       where: { id, userId },
       include: { client: true, _count: { select: { items: true } } },
