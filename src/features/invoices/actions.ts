@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { INVALID_REQUEST, parseIdArg } from '@/lib/action-args';
 import { fail, fromZodError, ok, type ActionResult } from '@/lib/action-result';
 import { requireUser } from '@/lib/session';
+import { safely, sendInvoiceIssuedEmail, sendInvoicePaidEmails } from '@/features/notifications/email';
 import { InvoiceError } from './errors';
 import { invoiceDraftSchema } from './schema';
 import {
@@ -62,6 +63,7 @@ export async function issueInvoiceAction(idArg: unknown): Promise<ActionResult<{
   if (!id) return fail(INVALID_REQUEST);
   return guard(async () => {
     const { number } = await issueInvoice(user.id, id);
+    await safely(() => sendInvoiceIssuedEmail(id));
     revalidatePath('/invoices');
     revalidatePath(`/invoices/${id}`);
     return ok({ number });
@@ -86,6 +88,7 @@ export async function markInvoicePaidAction(idArg: unknown): Promise<ActionResul
   if (!id) return fail(INVALID_REQUEST);
   return guard(async () => {
     await markInvoicePaidManually(user.id, id);
+    await safely(() => sendInvoicePaidEmails(id, { notifyFreelancer: false }));
     revalidatePath('/invoices');
     revalidatePath(`/invoices/${id}`);
     return ok();
