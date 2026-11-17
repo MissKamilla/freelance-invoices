@@ -110,6 +110,9 @@ export async function duplicateInvoiceAction(idArg: unknown): Promise<ActionResu
   redirect(`/invoices/${result.data.id}`);
 }
 
+/** Між ручними нагадуваннями — не менше години: кнопка не має перетворюватися на спам клієнту. */
+const REMINDER_COOLDOWN_MS = 60 * 60 * 1000;
+
 /** Ручне «Нагадати» — лише для виставленого неоплаченого рахунку. */
 export async function remindInvoiceAction(idArg: unknown): Promise<ActionResult> {
   const user = await requireUser();
@@ -117,6 +120,10 @@ export async function remindInvoiceAction(idArg: unknown): Promise<ActionResult>
   if (!id) return fail(INVALID_REQUEST);
   const invoice = await getInvoice(user.id, id);
   if (!invoice || invoice.status !== 'SENT') return fail('Нагадати можна лише про виставлений неоплачений рахунок');
+  const lastReminder = invoice.events.findLast((e) => e.type === 'REMINDER_SENT');
+  if (lastReminder && Date.now() - lastReminder.createdAt.getTime() < REMINDER_COOLDOWN_MS) {
+    return fail('Нагадування вже надсилали менше години тому');
+  }
 
   await dispatch(reminderRequested.create({ invoiceId: id }), () => sendReminderEmail(id, 'manual'));
   revalidatePath(`/invoices/${id}`);
