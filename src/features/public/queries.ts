@@ -13,3 +13,11 @@ export function getPublicInvoice(token: string) {
 }
 
 export type PublicInvoice = NonNullable<Awaited<ReturnType<typeof getPublicInvoice>>>;
+
+/** Платіж, з яким клієнт повернувся з платіжної сторінки (?payment=…), — лише цього рахунку. */
+export function getReturnedPayment(invoiceId: string, paymentId: string) {
+  return db.payment.findFirst({
+    where: { id: paymentId, invoiceId },
+    select: { status: true, failureReason: true },
+  });
+}
