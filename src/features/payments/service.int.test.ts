@@ -92,7 +92,43 @@ describe('applyPaymentUpdate', () => {
   });
 });
 
+describe('applyPaymentUpdate: паралельні різні події одного платежу', () => {
+  // Різні dedupeKey — дедуплікація не рятує; рішення має прийматися за станом платежу ПІСЛЯ блокування рахунку.
+  it('дві успішні події: рахунок оплачено один раз, без хибного NEEDS_REFUND', async () => {
+    const { invoice, payment } = await createPendingPayment();
+    const now = Date.now();
+
+    await Promise.all([
+      applyPaymentUpdate(successEvent(payment.externalId!, { occurredAt: new Date(now) })),
+      applyPaymentUpdate(successEvent(payment.externalId!, { occurredAt: new Date(now + 1_000) })),
+    ]);
+
+    expect(await eventsOf(invoice.id)).toEqual(['PAID']);
+    expect(await db.invoice.findUnique({ where: { id: invoice.id } })).toMatchObject({ status: 'PAID' });
+    expect(await db.payment.findUnique({ where: { id: payment.id } })).toMatchObject({ status: 'SUCCEEDED' });
+  });
+
+  it('відмова й пізніший успіх: оплачений рахунок не лишається з платежем FAILED', async () => {
+    const { invoice, payment } = await createPendingPayment();
+    const now = Date.now();
+
+    await Promise.all([
+      applyPaymentUpdate(successEvent(payment.externalId!, { occurredAt: new Date(now + 1_000) })),
+      applyPaymentUpdate(successEvent(payment.externalId!, { status: 'FAILED', amount: 0, occurredAt: new Date(now) })),
+    ]);
+
+    expect(await db.invoice.findUnique({ where: { id: invoice.id } })).toMatchObject({ status: 'PAID' });
+    expect(await db.payment.findUnique({ where: { id: payment.id } })).toMatchObject({ status: 'SUCCEEDED' });
+    expect(await eventsOf(invoice.id)).not.toContain('NEEDS_REFUND');
+  });
+});
+
 describe('startPayment', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete mockProvider.cancel;
+  });
+
   it('повторно використовує живий PENDING-платіж і не створює дублікатів', async () => {
     const { invoice } = await createPendingPayment();
     await db.payment.deleteMany({ where: { invoiceId: invoice.id } });

@@ -121,17 +121,23 @@ export async function applyPaymentUpdate(update: ProviderPaymentUpdate): Promise
       const markProcessed = () =>
         tx.webhookEvent.update({ where: { id: eventRow.id }, data: { processedAt: new Date() } });
 
-      const payment = await tx.payment.findUnique({
+      // Спершу лише знаходимо платіж — щоб знати, який рахунок блокувати.
+      const found = await tx.payment.findUnique({
         where: { provider_externalId: { provider: update.provider, externalId: update.externalId } },
+        select: { id: true, invoiceId: true },
       });
-      if (!payment) {
+      if (!found) {
         await markProcessed();
         return { outcome: 'unknown_payment' };
       }
 
-      await tx.$queryRaw`SELECT id FROM "invoice" WHERE id = ${payment.invoiceId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM "invoice" WHERE id = ${found.invoiceId} FOR UPDATE`;
+      // Платіж перечитуємо вже під блокуванням: паралельна подія з іншим ключем (успіх і відмова з двох вкладок)
+      // могла щойно змінити його статус, а рішення за застарілим рядком дало б FAILED на оплаченому рахунку
+      // або хибний NEEDS_REFUND. READ COMMITTED: кожен запит бачить усе, що закомічено до його початку.
+      const payment = await tx.payment.findUniqueOrThrow({ where: { id: found.id } });
       const invoice = await tx.invoice.findUniqueOrThrow({
-        where: { id: payment.invoiceId },
+        where: { id: found.invoiceId },
         select: { id: true, status: true, total: true, currency: true },
       });
 

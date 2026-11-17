@@ -26,6 +26,13 @@ export async function startPaymentAction(tokenArg: unknown): Promise<ActionResul
 }
 
 /**
+ * Платежі, які тестовий шлюз саме «списує». Справжній банк не дає двічі оплатити один checkout — без цього
+ * подвійний сабміт форми (дві вкладки, повторний POST) надіслав би дві різні події для одного платежу.
+ * Пам'ять процесу достатня: mock-провайдер заборонений для публічного розгортання (див. env.ts).
+ */
+const chargingPayments = new Set<string>();
+
+/**
  * Сабміт форми на сторінці тестового шлюзу: «списуємо» гроші з тестової картки й надсилаємо
  * підписаний вебхук — так само, як це зробив би справжній банк. Статус рахунку змінює лише вебхук.
  */
@@ -33,6 +40,16 @@ export async function payWithMockCardAction(paymentIdArg: unknown, cardNumberArg
   const paymentId = parseIdArg(paymentIdArg);
   const cardNumber = typeof cardNumberArg === 'string' ? cardNumberArg : '';
   if (!paymentId) return fail(INVALID_REQUEST);
+  if (chargingPayments.has(paymentId)) return fail('Платіж уже обробляється');
+  chargingPayments.add(paymentId);
+  try {
+    return await chargeAndNotify(paymentId, cardNumber);
+  } finally {
+    chargingPayments.delete(paymentId);
+  }
+}
+
+async function chargeAndNotify(paymentId: string, cardNumber: string): Promise<ActionResult> {
   const payment = await db.payment.findUnique({
     where: { id: paymentId },
     include: { invoice: { select: { publicToken: true } } },
