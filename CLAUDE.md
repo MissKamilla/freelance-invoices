@@ -43,6 +43,7 @@
 - Node ≥ 20.19 (беремо Node 24 LTS: `.nvmrc` + `engines`).
 - pnpm 10 блокує build-скрипти: `prisma`, `@prisma/engines`, `esbuild` дозволені в `pnpm-workspace.yaml` (`onlyBuiltDependencies`).
 - `pnpm typecheck` = `next typegen && tsc --noEmit` (глобальні `PageProps`/`LayoutProps` генерує Next).
+- Після `pnpm add` або додавання нових експортів у серверні модулі Turbopack інколи тримає застарілий граф (500, `undefined` імпорт) — перезапустити `pnpm dev`.
 
 **Better Auth / MUI**
 - Better Auth: плагін `nextCookies()` обов'язковий (інакше вхід із Server Action не ставить cookie).
