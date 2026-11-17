@@ -31,10 +31,34 @@ const seller: SellerSnapshot = {
 };
 
 const clients = [
-  { key: 'alfa', name: 'ТОВ «Альфа Діджитал»', taxId: '41234567', email: 'buh@alfa-digital.ua', address: 'м. Львів, вул. Городоцька, 10' },
-  { key: 'beta', name: 'ТОВ «Бета Студія»', taxId: '38765432', email: 'finance@beta.studio', address: 'м. Київ, вул. Антоновича, 50' },
-  { key: 'petrenko', name: 'ФОП Петренко Петро Петрович', taxId: '2987654320', email: 'petrenko@gmail.com', address: 'м. Одеса, вул. Дерибасівська, 5' },
-  { key: 'ngo', name: 'ГО «Код Майбутнього»', taxId: '43001002', email: 'hello@kodmaibutnoho.org', address: 'м. Харків, просп. Науки, 14' },
+  {
+    key: 'alfa',
+    name: 'ТОВ «Альфа Діджитал»',
+    taxId: '41234567',
+    email: 'buh@alfa-digital.ua',
+    address: 'м. Львів, вул. Городоцька, 10',
+  },
+  {
+    key: 'beta',
+    name: 'ТОВ «Бета Студія»',
+    taxId: '38765432',
+    email: 'finance@beta.studio',
+    address: 'м. Київ, вул. Антоновича, 50',
+  },
+  {
+    key: 'petrenko',
+    name: 'ФОП Петренко Петро Петрович',
+    taxId: '2987654320',
+    email: 'petrenko@gmail.com',
+    address: 'м. Одеса, вул. Дерибасівська, 5',
+  },
+  {
+    key: 'ngo',
+    name: 'ГО «Код Майбутнього»',
+    taxId: '43001002',
+    email: 'hello@kodmaibutnoho.org',
+    address: 'м. Харків, просп. Науки, 14',
+  },
   { key: 'gamma', name: 'ТОВ «Гамма Логістик»', taxId: '39998877', email: 'office@gamma-log.ua', address: null },
 ] as const;
 type ClientKey = (typeof clients)[number]['key'];
@@ -55,21 +79,145 @@ type SeedInvoice = {
 // quantity — у сотих, price — у копійках
 const грн = (value: number) => value * 100;
 const invoices: SeedInvoice[] = [
-  { client: 'alfa', issuedDaysAgo: 160, dueInDays: 7, outcome: 'paid', paidAfterDays: 3, provider: 'MANUAL', contractRef: 'Договір № 7 від 01.05.2026', items: [{ description: 'Дизайн лендінгу', unit: 'послуга', quantity: 100, price: грн(24_000) }] },
-  { client: 'beta', issuedDaysAgo: 130, dueInDays: 7, outcome: 'paid', paidAfterDays: 5, provider: 'MOCK', items: [{ description: 'UI-кіт для мобільного застосунку', unit: 'послуга', quantity: 100, price: грн(15_000) }, { description: 'Правки за фідбеком', unit: 'год', quantity: 350, price: грн(1_000) }] },
-  { client: 'petrenko', issuedDaysAgo: 120, dueInDays: 5, outcome: 'paid', paidAfterDays: 2, provider: 'MANUAL', items: [{ description: 'Логотип і фірмовий стиль', unit: 'послуга', quantity: 100, price: грн(6_000) }] },
-  { client: 'alfa', issuedDaysAgo: 98, dueInDays: 7, outcome: 'paid', paidAfterDays: 6, provider: 'MOCK', contractRef: 'Договір № 7 від 01.05.2026', items: [{ description: 'Дизайн особистого кабінету', unit: 'послуга', quantity: 100, price: грн(30_000) }] },
-  { client: 'ngo', issuedDaysAgo: 85, dueInDays: 14, outcome: 'paid', paidAfterDays: 10, provider: 'MANUAL', items: [{ description: 'Ілюстрації для звіту', unit: 'шт', quantity: 1200, price: грн(650) }, { description: 'Верстка звіту', unit: 'послуга', quantity: 100, price: грн(1_700) }] },
-  { client: 'beta', issuedDaysAgo: 62, dueInDays: 7, outcome: 'paid', paidAfterDays: 4, provider: 'MOCK', items: [{ description: 'Підтримка дизайн-системи', unit: 'міс', quantity: 100, price: грн(22_000) }] },
-  { client: 'alfa', issuedDaysAgo: 35, dueInDays: 7, outcome: 'paid', paidAfterDays: 2, provider: 'MOCK', contractRef: 'Договір № 7 від 01.05.2026', items: [{ description: 'Редизайн каталогу', unit: 'послуга', quantity: 100, price: грн(20_000) }, { description: 'Анімації інтерфейсу', unit: 'год', quantity: 600, price: грн(1_000) }] },
-  { client: 'petrenko', issuedDaysAgo: 30, dueInDays: 5, outcome: 'paid', paidAfterDays: 1, provider: 'MANUAL', items: [{ description: 'Банери для реклами', unit: 'шт', quantity: 500, price: грн(1_500) }] },
-  { client: 'beta', issuedDaysAgo: 9, dueInDays: 7, outcome: 'paid', paidAfterDays: 3, provider: 'MOCK', items: [{ description: 'Підтримка дизайн-системи', unit: 'міс', quantity: 100, price: грн(15_000) }] },
-  { client: 'alfa', issuedDaysAgo: 3, dueInDays: 7, outcome: 'viewed', contractRef: 'Договір № 7 від 01.05.2026', items: [{ description: 'Дизайн лендінгу акції', unit: 'послуга', quantity: 100, price: грн(25_000) }, { description: 'Правки', unit: 'год', quantity: 350, price: грн(1_000) }] },
-  { client: 'petrenko', issuedDaysAgo: 14, dueInDays: 7, outcome: 'viewed', items: [{ description: 'Макети для соцмереж', unit: 'шт', quantity: 1000, price: грн(650) }] },
-  { client: 'ngo', issuedDaysAgo: 1, dueInDays: 14, outcome: 'sent', items: [{ description: 'Інфографіка для грантової заявки', unit: 'послуга', quantity: 100, price: грн(12_000) }] },
-  { client: 'beta', issuedDaysAgo: 20, dueInDays: 7, outcome: 'cancelled', items: [{ description: 'Аудит юзабіліті (скасовано)', unit: 'послуга', quantity: 100, price: грн(9_000) }] },
-  { client: 'alfa', issuedDaysAgo: 0, dueInDays: 7, outcome: 'draft', items: [{ description: 'Дизайн email-розсилок', unit: 'шт', quantity: 400, price: грн(2_500) }] },
-  { client: 'gamma', issuedDaysAgo: 0, dueInDays: 10, outcome: 'draft', items: [{ description: 'Прототип CRM', unit: 'послуга', quantity: 100, price: грн(35_000) }] },
+  {
+    client: 'alfa',
+    issuedDaysAgo: 160,
+    dueInDays: 7,
+    outcome: 'paid',
+    paidAfterDays: 3,
+    provider: 'MANUAL',
+    contractRef: 'Договір № 7 від 01.05.2026',
+    items: [{ description: 'Дизайн лендінгу', unit: 'послуга', quantity: 100, price: грн(24_000) }],
+  },
+  {
+    client: 'beta',
+    issuedDaysAgo: 130,
+    dueInDays: 7,
+    outcome: 'paid',
+    paidAfterDays: 5,
+    provider: 'MOCK',
+    items: [
+      { description: 'UI-кіт для мобільного застосунку', unit: 'послуга', quantity: 100, price: грн(15_000) },
+      { description: 'Правки за фідбеком', unit: 'год', quantity: 350, price: грн(1_000) },
+    ],
+  },
+  {
+    client: 'petrenko',
+    issuedDaysAgo: 120,
+    dueInDays: 5,
+    outcome: 'paid',
+    paidAfterDays: 2,
+    provider: 'MANUAL',
+    items: [{ description: 'Логотип і фірмовий стиль', unit: 'послуга', quantity: 100, price: грн(6_000) }],
+  },
+  {
+    client: 'alfa',
+    issuedDaysAgo: 98,
+    dueInDays: 7,
+    outcome: 'paid',
+    paidAfterDays: 6,
+    provider: 'MOCK',
+    contractRef: 'Договір № 7 від 01.05.2026',
+    items: [{ description: 'Дизайн особистого кабінету', unit: 'послуга', quantity: 100, price: грн(30_000) }],
+  },
+  {
+    client: 'ngo',
+    issuedDaysAgo: 85,
+    dueInDays: 14,
+    outcome: 'paid',
+    paidAfterDays: 10,
+    provider: 'MANUAL',
+    items: [
+      { description: 'Ілюстрації для звіту', unit: 'шт', quantity: 1200, price: грн(650) },
+      { description: 'Верстка звіту', unit: 'послуга', quantity: 100, price: грн(1_700) },
+    ],
+  },
+  {
+    client: 'beta',
+    issuedDaysAgo: 62,
+    dueInDays: 7,
+    outcome: 'paid',
+    paidAfterDays: 4,
+    provider: 'MOCK',
+    items: [{ description: 'Підтримка дизайн-системи', unit: 'міс', quantity: 100, price: грн(22_000) }],
+  },
+  {
+    client: 'alfa',
+    issuedDaysAgo: 35,
+    dueInDays: 7,
+    outcome: 'paid',
+    paidAfterDays: 2,
+    provider: 'MOCK',
+    contractRef: 'Договір № 7 від 01.05.2026',
+    items: [
+      { description: 'Редизайн каталогу', unit: 'послуга', quantity: 100, price: грн(20_000) },
+      { description: 'Анімації інтерфейсу', unit: 'год', quantity: 600, price: грн(1_000) },
+    ],
+  },
+  {
+    client: 'petrenko',
+    issuedDaysAgo: 30,
+    dueInDays: 5,
+    outcome: 'paid',
+    paidAfterDays: 1,
+    provider: 'MANUAL',
+    items: [{ description: 'Банери для реклами', unit: 'шт', quantity: 500, price: грн(1_500) }],
+  },
+  {
+    client: 'beta',
+    issuedDaysAgo: 9,
+    dueInDays: 7,
+    outcome: 'paid',
+    paidAfterDays: 3,
+    provider: 'MOCK',
+    items: [{ description: 'Підтримка дизайн-системи', unit: 'міс', quantity: 100, price: грн(15_000) }],
+  },
+  {
+    client: 'alfa',
+    issuedDaysAgo: 3,
+    dueInDays: 7,
+    outcome: 'viewed',
+    contractRef: 'Договір № 7 від 01.05.2026',
+    items: [
+      { description: 'Дизайн лендінгу акції', unit: 'послуга', quantity: 100, price: грн(25_000) },
+      { description: 'Правки', unit: 'год', quantity: 350, price: грн(1_000) },
+    ],
+  },
+  {
+    client: 'petrenko',
+    issuedDaysAgo: 14,
+    dueInDays: 7,
+    outcome: 'viewed',
+    items: [{ description: 'Макети для соцмереж', unit: 'шт', quantity: 1000, price: грн(650) }],
+  },
+  {
+    client: 'ngo',
+    issuedDaysAgo: 1,
+    dueInDays: 14,
+    outcome: 'sent',
+    items: [{ description: 'Інфографіка для грантової заявки', unit: 'послуга', quantity: 100, price: грн(12_000) }],
+  },
+  {
+    client: 'beta',
+    issuedDaysAgo: 20,
+    dueInDays: 7,
+    outcome: 'cancelled',
+    items: [{ description: 'Аудит юзабіліті (скасовано)', unit: 'послуга', quantity: 100, price: грн(9_000) }],
+  },
+  {
+    client: 'alfa',
+    issuedDaysAgo: 0,
+    dueInDays: 7,
+    outcome: 'draft',
+    items: [{ description: 'Дизайн email-розсилок', unit: 'шт', quantity: 400, price: грн(2_500) }],
+  },
+  {
+    client: 'gamma',
+    issuedDaysAgo: 0,
+    dueInDays: 10,
+    outcome: 'draft',
+    items: [{ description: 'Прототип CRM', unit: 'послуга', quantity: 100, price: грн(35_000) }],
+  },
 ];
 
 async function main() {
@@ -153,7 +301,8 @@ async function main() {
       { type: 'ISSUED', createdAt: issuedAt, meta: { number } },
     ];
     if (seed.outcome !== 'sent') events.push({ type: 'VIEWED', createdAt: viewedAt });
-    if (seed.outcome === 'paid' && paidAt) events.push({ type: 'PAID', createdAt: paidAt, meta: { provider: seed.provider } });
+    if (seed.outcome === 'paid' && paidAt)
+      events.push({ type: 'PAID', createdAt: paidAt, meta: { provider: seed.provider } });
     if (seed.outcome === 'cancelled') events.push({ type: 'CANCELLED', createdAt: cancelledAt });
 
     await db.invoice.create({
@@ -188,7 +337,9 @@ async function main() {
     });
   }
 
-  console.log(`Демо-дані створено: ${DEMO_USER.email} / ${DEMO_USER.password} — ${invoices.length} рахунків, ${clients.length} клієнтів.`);
+  console.log(
+    `Демо-дані створено: ${DEMO_USER.email} / ${DEMO_USER.password} — ${invoices.length} рахунків, ${clients.length} клієнтів.`,
+  );
 }
 
 main()

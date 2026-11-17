@@ -30,10 +30,7 @@ async function guard<T>(fn: () => Promise<ActionResult<T>>): Promise<ActionResul
   }
 }
 
-export async function saveInvoiceDraftAction(
-  input: unknown,
-  idArg?: unknown,
-): Promise<ActionResult<{ id: string }>> {
+export async function saveInvoiceDraftAction(input: unknown, idArg?: unknown): Promise<ActionResult<{ id: string }>> {
   const user = await requireUser();
   const id = idArg === undefined ? undefined : parseIdArg(idArg);
   if (id === null) return fail(INVALID_REQUEST);

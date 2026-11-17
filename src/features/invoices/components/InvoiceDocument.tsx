@@ -70,7 +70,11 @@ export function InvoiceDocument({ view }: { view: InvoiceView }) {
         <TableContainer>
           <Table
             size="small"
-            sx={{ minWidth: 520, '& th': { whiteSpace: 'nowrap' }, '& td:not(:nth-of-type(2))': { whiteSpace: 'nowrap' } }}
+            sx={{
+              minWidth: 520,
+              '& th': { whiteSpace: 'nowrap' },
+              '& td:not(:nth-of-type(2))': { whiteSpace: 'nowrap' },
+            }}
           >
             <TableHead>
               <TableRow>

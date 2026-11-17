@@ -9,7 +9,13 @@ const input = (overrides: {
   payment?: Partial<Parameters<typeof decidePaymentUpdate>[0]['payment']>;
   invoice?: Partial<Parameters<typeof decidePaymentUpdate>[0]['invoice']>;
 }) => ({
-  update: { status: 'SUCCEEDED' as const, amount: 2_850_000, currency: 'UAH' as const, occurredAt: t1, ...overrides.update },
+  update: {
+    status: 'SUCCEEDED' as const,
+    amount: 2_850_000,
+    currency: 'UAH' as const,
+    occurredAt: t1,
+    ...overrides.update,
+  },
   payment: { status: 'PENDING' as const, providerUpdatedAt: null, ...overrides.payment },
   invoice: { status: 'SENT' as const, total: 2_850_000, currency: 'UAH' as const, ...overrides.invoice },
 });
@@ -72,7 +78,9 @@ describe('decidePaymentUpdate', () => {
   });
 
   it('статус не може піти назад: SUCCEEDED → FAILED ігнорується', () => {
-    expect(decidePaymentUpdate(input({ update: { status: 'FAILED' }, payment: { status: 'SUCCEEDED' } }))).toMatchObject({
+    expect(
+      decidePaymentUpdate(input({ update: { status: 'FAILED' }, payment: { status: 'SUCCEEDED' } })),
+    ).toMatchObject({
       outcome: 'ignored',
       paymentStatus: null,
     });

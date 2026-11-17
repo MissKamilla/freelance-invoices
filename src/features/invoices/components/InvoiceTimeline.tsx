@@ -85,7 +85,8 @@ export function InvoiceTimeline({ events, payments }: TimelineProps) {
             {payments.map((payment) => (
               <Box key={payment.id}>
                 <Typography variant="body2">
-                  {PROVIDER_LABELS[payment.provider]} — {formatMoney(payment.amount)}, {PAYMENT_STATUS_LABELS[payment.status]}
+                  {PROVIDER_LABELS[payment.provider]} — {formatMoney(payment.amount)},{' '}
+                  {PAYMENT_STATUS_LABELS[payment.status]}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {formatDateTime(payment.createdAt)}

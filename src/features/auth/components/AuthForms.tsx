@@ -5,12 +5,7 @@ import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
-import {
-  demoSignInAction,
-  signInAction,
-  signUpAction,
-  type AuthFormState,
-} from '@/features/auth/actions';
+import { demoSignInAction, signInAction, signUpAction, type AuthFormState } from '@/features/auth/actions';
 
 function fieldError(state: AuthFormState, field: string): string | undefined {
   return state && !state.ok ? state.fieldErrors?.[field]?.[0] : undefined;
@@ -84,8 +79,7 @@ export function SignUpForm() {
   const bind = (field: keyof typeof values) => ({
     name: field,
     value: values[field],
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-      setValues((v) => ({ ...v, [field]: e.target.value })),
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setValues((v) => ({ ...v, [field]: e.target.value })),
     error: Boolean(fieldError(state, field)),
     helperText: fieldError(state, field),
   });

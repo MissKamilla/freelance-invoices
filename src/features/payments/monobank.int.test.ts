@@ -48,7 +48,11 @@ describe('monobank webhook', () => {
 
     const response = await handleWebhook(
       monobankProvider,
-      new Request('http://localhost/api/webhooks/monobank', { method: 'POST', body, headers: { 'x-sign': sign(body) } }),
+      new Request('http://localhost/api/webhooks/monobank', {
+        method: 'POST',
+        body,
+        headers: { 'x-sign': sign(body) },
+      }),
     );
 
     expect(response.status).toBe(200);

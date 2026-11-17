@@ -13,7 +13,11 @@ export async function getDashboard(userId: string, today: Date) {
 
   const [outstanding, overdue, paidThisMonth, paidForChart, recent, profile] = await Promise.all([
     db.invoice.aggregate({ where: { userId, status: 'SENT' }, _sum: { total: true }, _count: true }),
-    db.invoice.aggregate({ where: { userId, status: 'SENT', dueDate: { lt: today } }, _sum: { total: true }, _count: true }),
+    db.invoice.aggregate({
+      where: { userId, status: 'SENT', dueDate: { lt: today } },
+      _sum: { total: true },
+      _count: true,
+    }),
     db.invoice.aggregate({
       where: { userId, status: 'PAID', paidAt: { gte: currentMonthStart } },
       _sum: { total: true },
@@ -27,7 +31,15 @@ export async function getDashboard(userId: string, today: Date) {
       where: { userId, status: { not: 'DRAFT' } },
       orderBy: { issuedAt: 'desc' },
       take: 5,
-      select: { id: true, number: true, status: true, dueDate: true, viewedAt: true, total: true, client: { select: { name: true } } },
+      select: {
+        id: true,
+        number: true,
+        status: true,
+        dueDate: true,
+        viewedAt: true,
+        total: true,
+        client: { select: { name: true } },
+      },
     }),
     db.businessProfile.findUnique({ where: { userId }, select: { id: true } }),
   ]);

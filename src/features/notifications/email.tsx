@@ -11,7 +11,11 @@ import { sendEmail } from '@/lib/mailer';
 import { formatMoney } from '@/lib/money';
 import type { ReminderKind } from '@/lib/reminders';
 
-const PROVIDER_LABELS = { MOCK: 'карткою', MONOBANK: 'карткою через monobank', MANUAL: 'переказом на рахунок' } as const;
+const PROVIDER_LABELS = {
+  MOCK: 'карткою',
+  MONOBANK: 'карткою через monobank',
+  MANUAL: 'переказом на рахунок',
+} as const;
 
 async function loadIssued(invoiceId: string) {
   const invoice = await db.invoice.findUnique({

@@ -2,8 +2,7 @@ import type { z } from 'zod';
 
 /** Єдиний формат результату Server Action. */
 export type ActionResult<T = void> =
-  | { ok: true; data: T }
-  | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
+  { ok: true; data: T } | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
 
 export function ok<T>(data: T): ActionResult<T>;
 export function ok(): ActionResult<void>;

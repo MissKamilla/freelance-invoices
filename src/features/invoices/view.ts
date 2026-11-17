@@ -12,7 +12,14 @@ type IssuedInvoiceSource = {
   total: number;
   sellerSnapshot: unknown;
   clientSnapshot: unknown;
-  items: { position: number; description: string; unit: string; quantityHundredths: number; unitPrice: number; amount: number }[];
+  items: {
+    position: number;
+    description: string;
+    unit: string;
+    quantityHundredths: number;
+    unitPrice: number;
+    amount: number;
+  }[];
 };
 
 /** Дані документа «Рахунок на оплату» — для HTML-прев'ю, публічної сторінки й PDF. */

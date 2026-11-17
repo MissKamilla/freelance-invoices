@@ -48,7 +48,10 @@ export function ClientsView({ clients, archived }: { clients: ClientRow[]; archi
     setPendingId(row.id);
     startTransition(async () => {
       const result = await setClientArchivedAction(row.id, !archived);
-      notify(result.ok ? (archived ? 'Клієнта відновлено' : 'Клієнта архівовано') : result.error, result.ok ? 'success' : 'error');
+      notify(
+        result.ok ? (archived ? 'Клієнта відновлено' : 'Клієнта архівовано') : result.error,
+        result.ok ? 'success' : 'error',
+      );
       setPendingId(null);
     });
   };

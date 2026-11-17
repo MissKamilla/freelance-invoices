@@ -62,7 +62,12 @@ export function ProfileForm({ defaultValues }: { defaultValues: ProfileFormInput
                 />
                 <TextField label="Телефон" placeholder="+380 67 123 45 67" {...field('phone')} />
               </Stack>
-              <TextField label="IBAN" placeholder="UA57 3220 0100 0002 6007 2335 6600 1" {...ibanField} onBlur={onIbanBlur} />
+              <TextField
+                label="IBAN"
+                placeholder="UA57 3220 0100 0002 6007 2335 6600 1"
+                {...ibanField}
+                onBlur={onIbanBlur}
+              />
               <TextField label="Банк" {...field('bankName')} />
               <TextField label="Адреса" placeholder="м. Київ, вул. Хрещатик, 1" {...field('address')} />
               <TextField label="Податковий статус" {...field('taxNote')} />

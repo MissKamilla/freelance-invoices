@@ -19,10 +19,7 @@ type MockCheckoutFormProps = { paymentId: string; amount: number; backUrl: strin
 
 export function MockCheckoutForm({ paymentId, amount, backUrl }: MockCheckoutFormProps) {
   const [card, setCard] = useState(formatCard(MOCK_CARDS.success));
-  const [state, action, pending] = useActionState(
-    async () => payWithMockCardAction(paymentId, card),
-    null,
-  );
+  const [state, action, pending] = useActionState(async () => payWithMockCardAction(paymentId, card), null);
 
   return (
     <Stack component="form" action={action} spacing={2}>
@@ -35,7 +32,12 @@ export function MockCheckoutForm({ paymentId, amount, backUrl }: MockCheckoutFor
       />
       <Stack direction="row" spacing={2}>
         <TextField label="Термін дії" defaultValue="12/30" slotProps={{ htmlInput: { autoComplete: 'cc-exp' } }} />
-        <TextField label="CVV" defaultValue="123" type="password" slotProps={{ htmlInput: { autoComplete: 'cc-csc' } }} />
+        <TextField
+          label="CVV"
+          defaultValue="123"
+          type="password"
+          slotProps={{ htmlInput: { autoComplete: 'cc-csc' } }}
+        />
       </Stack>
       <Stack component="ul" spacing={0.25} sx={{ m: 0, pl: 2, color: 'text.secondary', typography: 'caption' }}>
         <li>{formatCard(MOCK_CARDS.success)} — успішна оплата</li>

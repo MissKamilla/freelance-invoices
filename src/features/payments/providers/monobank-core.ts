@@ -69,7 +69,11 @@ export function buildCreateInvoiceBody(input: CheckoutInput) {
 }
 
 /** ECDSA-SHA256 над сирим тілом; ключ і підпис — base64 (ключ — base64 від PEM). */
-export function verifyMonobankSignature(rawBody: string, signatureBase64: string | null, publicKeyBase64: string): boolean {
+export function verifyMonobankSignature(
+  rawBody: string,
+  signatureBase64: string | null,
+  publicKeyBase64: string,
+): boolean {
   if (!signatureBase64) return false;
   try {
     const verifier = createVerify('SHA256');

@@ -12,8 +12,7 @@ export const MOCK_CARDS = {
 } as const;
 
 export type MockCardResult =
-  | { status: 'success'; chargedAmount: number }
-  | { status: 'failure'; chargedAmount: 0; failureReason: string };
+  { status: 'success'; chargedAmount: number } | { status: 'failure'; chargedAmount: 0; failureReason: string };
 
 export function chargeMockCard(cardNumber: string, amount: number): MockCardResult {
   const digits = cardNumber.replace(/\D/g, '');

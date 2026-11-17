@@ -62,7 +62,14 @@ export function CardPayment({ token, returned }: CardPaymentProps) {
         </Alert>
       )}
       {state && !state.ok && <Alert severity="error">{state.error}</Alert>}
-      <Button type="submit" variant="contained" size="large" startIcon={<CreditCardOutlined />} loading={pending} fullWidth>
+      <Button
+        type="submit"
+        variant="contained"
+        size="large"
+        startIcon={<CreditCardOutlined />}
+        loading={pending}
+        fullWidth
+      >
         Оплатити карткою
       </Button>
     </Stack>

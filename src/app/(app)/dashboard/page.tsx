@@ -74,7 +74,11 @@ export default async function DashboardPage() {
       )}
 
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' } }}>
-        <Kpi title="Очікується" value={formatMoney(data.outstanding.total)} hint={invoicesWord(data.outstanding.count)} />
+        <Kpi
+          title="Очікується"
+          value={formatMoney(data.outstanding.total)}
+          hint={invoicesWord(data.outstanding.count)}
+        />
         <Kpi
           title="Прострочено"
           value={formatMoney(data.overdue.total)}

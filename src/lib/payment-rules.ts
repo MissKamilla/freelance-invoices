@@ -18,14 +18,7 @@ export function canPaymentTransition(from: PaymentStatus, to: PaymentStatus): bo
 }
 
 export type PaymentOutcome =
-  | 'paid'
-  | 'amount_mismatch'
-  | 'needs_refund'
-  | 'failed'
-  | 'expired'
-  | 'refunded'
-  | 'stale'
-  | 'ignored';
+  'paid' | 'amount_mismatch' | 'needs_refund' | 'failed' | 'expired' | 'refunded' | 'stale' | 'ignored';
 
 export type PaymentDecision = {
   outcome: PaymentOutcome;

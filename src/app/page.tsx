@@ -41,8 +41,8 @@ export default function LandingPage() {
           Рахунок за хвилину — оплата в один клік
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400, maxWidth: 560 }}>
-          Виставляйте рахунки клієнтам як ФОП і отримуйте оплату за посиланням — без Word, ручних
-          підрахунків і переписування реквізитів.
+          Виставляйте рахунки клієнтам як ФОП і отримуйте оплату за посиланням — без Word, ручних підрахунків і
+          переписування реквізитів.
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <Button component={Link} href="/register" variant="contained" size="large">

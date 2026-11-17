@@ -10,10 +10,7 @@ export const profileSchema = z.object({
     .trim()
     .min(3, 'Вкажіть ПІБ, наприклад «ФОП Іваненко Олена Петрівна»')
     .max(140, 'Не більше 140 символів'),
-  taxId: z
-    .string()
-    .trim()
-    .refine(isValidRnokpp, 'РНОКПП — 10 цифр з правильною контрольною цифрою'),
+  taxId: z.string().trim().refine(isValidRnokpp, 'РНОКПП — 10 цифр з правильною контрольною цифрою'),
   iban: z
     .string()
     .transform(normalizeIban)

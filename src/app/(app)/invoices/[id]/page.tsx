@@ -30,10 +30,7 @@ export default async function InvoicePage({ params }: PageProps<'/invoices/[id]'
   if (!invoice) notFound();
 
   if (invoice.status === 'DRAFT') {
-    const [clients, profile] = await Promise.all([
-      listClientOptions(user.id, invoice.clientId),
-      getProfile(user.id),
-    ]);
+    const [clients, profile] = await Promise.all([listClientOptions(user.id, invoice.clientId), getProfile(user.id)]);
     return (
       <InvoiceEditor
         key={invoice.updatedAt.toISOString()}

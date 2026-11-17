@@ -24,7 +24,9 @@ export default async function MockCheckoutPage({ params }: PageProps<'/pay/mock/
   const backUrl = `/i/${payment.invoice.publicToken}`;
   const seller = sellerSnapshotSchema.safeParse(payment.invoice.sellerSnapshot);
   const actionable =
-    payment.status === 'PENDING' && payment.invoice.status === 'SENT' && (!payment.expiresAt || payment.expiresAt > new Date());
+    payment.status === 'PENDING' &&
+    payment.invoice.status === 'SENT' &&
+    (!payment.expiresAt || payment.expiresAt > new Date());
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 2, bgcolor: '#EEF1F6' }}>
@@ -48,7 +50,9 @@ export default async function MockCheckoutPage({ params }: PageProps<'/pay/mock/
               <MockCheckoutForm paymentId={payment.id} amount={payment.amount} backUrl={backUrl} />
             ) : (
               <Stack spacing={2}>
-                <Alert severity="info">Платіж неактуальний: його вже завершено, скасовано або минув час на оплату.</Alert>
+                <Alert severity="info">
+                  Платіж неактуальний: його вже завершено, скасовано або минув час на оплату.
+                </Alert>
                 <Button component={Link} href={backUrl} variant="contained">
                   Повернутися до рахунку
                 </Button>

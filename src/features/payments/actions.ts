@@ -55,7 +55,10 @@ export async function payWithMockCardAction(paymentIdArg: unknown, cardNumberArg
 
   const response = await fetch(`${env.APP_URL}/api/webhooks/mock`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', [MOCK_SIGNATURE_HEADER]: hmacSha256Hex(env.MOCK_WEBHOOK_SECRET, body) },
+    headers: {
+      'Content-Type': 'application/json',
+      [MOCK_SIGNATURE_HEADER]: hmacSha256Hex(env.MOCK_WEBHOOK_SECRET, body),
+    },
     body,
   });
   if (!response.ok) return fail('Платіжний шлюз тимчасово недоступний, спробуйте ще раз');

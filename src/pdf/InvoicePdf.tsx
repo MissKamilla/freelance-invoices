@@ -32,7 +32,15 @@ const s = StyleSheet.create({
   total: { fontSize: 12, fontWeight: 700 },
   footer: { flexDirection: 'row', marginTop: 22, gap: 18, alignItems: 'flex-start' },
   qr: { width: QR_SIZE, height: QR_SIZE, position: 'relative' },
-  qrSign: { position: 'absolute', top: 0, left: 0, width: QR_SIZE, height: QR_SIZE, textAlign: 'center', fontWeight: 700 },
+  qrSign: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: QR_SIZE,
+    height: QR_SIZE,
+    textAlign: 'center',
+    fontWeight: 700,
+  },
 });
 
 function QrCode({ url }: { url: string }) {

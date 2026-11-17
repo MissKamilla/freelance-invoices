@@ -17,7 +17,16 @@ type ConfirmDialogProps = {
   onClose: () => void;
 };
 
-export function ConfirmDialog({ open, title, text, confirmLabel, danger, pending, onConfirm, onClose }: ConfirmDialogProps) {
+export function ConfirmDialog({
+  open,
+  title,
+  text,
+  confirmLabel,
+  danger,
+  pending,
+  onConfirm,
+  onClose,
+}: ConfirmDialogProps) {
   return (
     <Dialog open={open} onClose={pending ? undefined : onClose} maxWidth="xs" fullWidth>
       <DialogTitle>{title}</DialogTitle>

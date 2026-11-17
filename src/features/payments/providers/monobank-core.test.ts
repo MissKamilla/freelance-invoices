@@ -81,7 +81,13 @@ describe('mapMonobankStatus', () => {
 
 describe('buildCreateInvoiceBody', () => {
   it('копійки, гривня, термін дії й вебхук лише за наявності публічного URL', () => {
-    const base = { paymentId: 'pay_1', amount: 2_850_000, reference: 'invoice-14', purpose: 'Оплата', redirectUrl: 'http://localhost:3000/i/t?payment=pay_1' };
+    const base = {
+      paymentId: 'pay_1',
+      amount: 2_850_000,
+      reference: 'invoice-14',
+      purpose: 'Оплата',
+      redirectUrl: 'http://localhost:3000/i/t?payment=pay_1',
+    };
     expect(buildCreateInvoiceBody(base)).toEqual({
       amount: 2_850_000,
       ccy: 980,
@@ -89,8 +95,8 @@ describe('buildCreateInvoiceBody', () => {
       redirectUrl: base.redirectUrl,
       validity: 3600,
     });
-    expect(buildCreateInvoiceBody({ ...base, webhookUrl: 'https://x.trycloudflare.com/api/webhooks/monobank' })).toHaveProperty(
-      'webHookUrl',
-    );
+    expect(
+      buildCreateInvoiceBody({ ...base, webhookUrl: 'https://x.trycloudflare.com/api/webhooks/monobank' }),
+    ).toHaveProperty('webHookUrl');
   });
 });

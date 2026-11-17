@@ -72,7 +72,11 @@ export async function startPayment(publicToken: string): Promise<string> {
     await db.$transaction([
       db.payment.update({ where: { id: payment.id }, data: { externalId, checkoutUrl } }),
       db.invoiceEvent.create({
-        data: { invoiceId: invoice.id, type: 'PAYMENT_STARTED', meta: { provider: provider.id, paymentId: payment.id } },
+        data: {
+          invoiceId: invoice.id,
+          type: 'PAYMENT_STARTED',
+          meta: { provider: provider.id, paymentId: payment.id },
+        },
       }),
     ]);
     return checkoutUrl;

@@ -68,18 +68,17 @@ export function PaymentPanel({ token, view, paidAt, overdue, cardPayment }: Paym
                 <CopyField label="Отримувач" value={seller.legalName} />
                 <CopyField label="IBAN" value={formatIban(seller.iban)} copyValue={seller.iban} />
                 <CopyField label="РНОКПП / код отримувача" value={seller.taxId} />
-                <CopyField label="Сума" value={formatMoney(view.total)} copyValue={formatAmount(view.total).replace(/\s/g, '')} />
+                <CopyField
+                  label="Сума"
+                  value={formatMoney(view.total)}
+                  copyValue={formatAmount(view.total).replace(/\s/g, '')}
+                />
                 <CopyField label="Призначення платежу" value={view.paymentPurpose} />
               </Stack>
             </>
           )}
 
-          <Button
-            href={`/i/${token}/pdf`}
-            variant="outlined"
-            startIcon={<FileDownloadOutlined />}
-            fullWidth
-          >
+          <Button href={`/i/${token}/pdf`} variant="outlined" startIcon={<FileDownloadOutlined />} fullWidth>
             Завантажити PDF
           </Button>
         </Stack>

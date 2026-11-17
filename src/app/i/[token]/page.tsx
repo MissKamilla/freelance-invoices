@@ -23,8 +23,7 @@ export default async function PublicInvoicePage({ params, searchParams }: PagePr
   const invoice = await getPublicInvoice(token);
   if (!invoice) notFound();
 
-  const returnedPayment =
-    typeof paymentId === 'string' ? await getReturnedPayment(invoice.id, paymentId) : null;
+  const returnedPayment = typeof paymentId === 'string' ? await getReturnedPayment(invoice.id, paymentId) : null;
   const returned = returnedPayment && {
     paymentId: paymentId as string,
     status:

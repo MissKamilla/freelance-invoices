@@ -21,7 +21,10 @@ export function monthKeyLabel(key: string): string {
 }
 
 /** Сума оплат за кожен місяць (копійки); місяці без оплат — 0. */
-export function monthlyTotals(payments: readonly { paidAt: Date; total: number }[], months: readonly string[]): number[] {
+export function monthlyTotals(
+  payments: readonly { paidAt: Date; total: number }[],
+  months: readonly string[],
+): number[] {
   const totals = new Map(months.map((key) => [key, 0]));
   for (const { paidAt, total } of payments) {
     const key = kyivMonthKey(paidAt);

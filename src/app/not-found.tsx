@@ -5,7 +5,10 @@ import Link from '@/components/Link';
 
 export default function NotFound() {
   return (
-    <Stack spacing={2} sx={{ minHeight: '70vh', alignItems: 'center', justifyContent: 'center', textAlign: 'center', p: 2 }}>
+    <Stack
+      spacing={2}
+      sx={{ minHeight: '70vh', alignItems: 'center', justifyContent: 'center', textAlign: 'center', p: 2 }}
+    >
       <Typography variant="h3" component="h1" color="primary">
         404
       </Typography>

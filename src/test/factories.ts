@@ -30,7 +30,16 @@ export async function createDraftInvoice(userId: string, clientId: string, total
       dueDate: addDays(todayKyiv(), 7),
       total,
       items: {
-        create: [{ position: 1, description: 'Послуга', unit: 'послуга', quantityHundredths: 100, unitPrice: total, amount: total }],
+        create: [
+          {
+            position: 1,
+            description: 'Послуга',
+            unit: 'послуга',
+            quantityHundredths: 100,
+            unitPrice: total,
+            amount: total,
+          },
+        ],
       },
     },
   });
@@ -45,7 +54,13 @@ export async function createPendingPayment(total = 2_850_000) {
     data: { status: 'SENT', number: 1, issueDate: todayKyiv(), publicToken: nanoid(24), paymentPurpose: 'Оплата' },
   });
   const payment = await db.payment.create({
-    data: { invoiceId: invoice.id, provider: 'MOCK', amount: total, externalId: `mock_${nanoid(10)}`, expiresAt: addDays(new Date(), 1) },
+    data: {
+      invoiceId: invoice.id,
+      provider: 'MOCK',
+      amount: total,
+      externalId: `mock_${nanoid(10)}`,
+      expiresAt: addDays(new Date(), 1),
+    },
   });
   return { userId, invoice, payment };
 }

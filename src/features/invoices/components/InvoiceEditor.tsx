@@ -79,7 +79,10 @@ export function InvoiceEditor({ invoiceId, clients: initialClients, defaultValue
 
       if (mode === 'issue') {
         const issued = await issueInvoiceAction(id);
-        notify(issued.ok ? `Рахунок № ${issued.data.number} виставлено` : issued.error, issued.ok ? 'success' : 'error');
+        notify(
+          issued.ok ? `Рахунок № ${issued.data.number} виставлено` : issued.error,
+          issued.ok ? 'success' : 'error',
+        );
       } else {
         notify('Чернетку збережено');
       }
@@ -188,7 +191,11 @@ export function InvoiceEditor({ invoiceId, clients: initialClients, defaultValue
                   )}
                 />
                 <Tooltip title="Новий клієнт">
-                  <IconButton aria-label="Додати нового клієнта" onClick={() => setClientDialogOpen(true)} sx={{ mt: 1 }}>
+                  <IconButton
+                    aria-label="Додати нового клієнта"
+                    onClick={() => setClientDialogOpen(true)}
+                    sx={{ mt: 1 }}
+                  >
                     <PersonAddOutlined />
                   </IconButton>
                 </Tooltip>

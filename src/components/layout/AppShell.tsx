@@ -68,9 +68,7 @@ export function AppShell({ user, signOutAction, children }: AppShellProps) {
       </List>
       <Divider />
       <Stack direction="row" spacing={1.5} sx={{ p: 2, alignItems: 'center' }}>
-        <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}>
-          {user.name.charAt(0).toUpperCase()}
-        </Avatar>
+        <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}>{user.name.charAt(0).toUpperCase()}</Avatar>
         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
           <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
             {user.name}
