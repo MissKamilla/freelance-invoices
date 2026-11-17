@@ -39,11 +39,12 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
+      # .env — до встановлення: postinstall запускає prisma generate, а prisma.config.ts вимагає DATABASE_URL.
       - name: Env
         run: cp .env.example .env
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm lint
