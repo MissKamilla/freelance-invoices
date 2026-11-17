@@ -1,4 +1,5 @@
 'use server';
+import { parseIdArg } from '@/lib/action-args';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
 
@@ -6,7 +7,9 @@ import { getSession } from '@/lib/session';
  * Позначка «клієнт переглянув». Викликається з браузера (useEffect), тому прев'ю посилань
  * у месенджерах, які не виконують JS, перегляд не фіксують. Перегляд власником не враховується.
  */
-export async function markInvoiceViewedAction(token: string): Promise<void> {
+export async function markInvoiceViewedAction(tokenArg: unknown): Promise<void> {
+  const token = parseIdArg(tokenArg);
+  if (!token) return;
   const invoice = await db.invoice.findFirst({
     where: { publicToken: token, status: 'SENT', viewedAt: null },
     select: { id: true, userId: true },
