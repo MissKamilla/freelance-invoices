@@ -41,6 +41,8 @@
 - Генератор `prisma-client` з `output: "../src/generated/prisma"`; тека в `.gitignore`; `"postinstall": "prisma generate"`.
 - `prisma.config.ts` сам не читає `.env` → першим рядком `import 'dotenv/config'`; seed налаштувати в конфігу.
 - Node ≥ 20.19 (беремо Node 24 LTS: `.nvmrc` + `engines`).
+- pnpm 10 блокує build-скрипти: `prisma`, `@prisma/engines`, `esbuild` дозволені в `pnpm-workspace.yaml` (`onlyBuiltDependencies`).
+- `pnpm typecheck` = `next typegen && tsc --noEmit` (глобальні `PageProps`/`LayoutProps` генерує Next).
 
 **Better Auth / MUI**
 - Better Auth: плагін `nextCookies()` обов'язковий (інакше вхід із Server Action не ставить cookie).
@@ -688,6 +690,10 @@ MOCK_WEBHOOK_SECRET=dev-secret
 MONOBANK_TOKEN=
 PUBLIC_URL=
 ```
+
+**Без Docker (лише для швидкої перевірки під час розробки):** `npx prisma dev -n fi-verify -d` піднімає локальний Postgres (PGlite);
+далі `DATABASE_URL='postgres://postgres:postgres@localhost:51214/template1?sslmode=disable'` для `prisma migrate deploy` і `pnpm dev`.
+Mailpit та Inngest у цьому режимі недоступні.
 
 **Скрипти `package.json`:** `dev`, `build`, `start`, `lint` (`eslint .`), `typecheck` (`tsc --noEmit`), `test`, `test:watch`, `format`,
 `bootstrap`, `db:migrate`, `db:seed`, `db:studio`, `db:reset`, `postinstall` (`prisma generate`).
