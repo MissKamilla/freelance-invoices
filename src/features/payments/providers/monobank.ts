@@ -22,14 +22,17 @@ async function monobankRequest<T>(path: string, init?: RequestInit): Promise<T> 
   return response.json() as Promise<T>;
 }
 
-// Публічний ключ для перевірки підпису вебхуків. Кешуємо; при невдалій перевірці перезапитуємо один раз
-// (ключ може змінитися).
-let publicKeyCache: string | null = null;
+// Публічний ключ для перевірки підпису вебхуків. Кешуємо; при невдалій перевірці перезапитуємо (ключ може
+// змінитися), але не частіше ніж раз на 5 хвилин — інакше потік підроблених вебхуків перетворюється
+// на потік наших запитів до банку.
+const PUBKEY_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+let publicKeyCache: { key: string; fetchedAt: number } | null = null;
 async function getPublicKey(refresh = false): Promise<string> {
-  if (!publicKeyCache || refresh) {
-    publicKeyCache = (await monobankRequest<{ key: string }>('/api/merchant/pubkey')).key;
+  if (!publicKeyCache || (refresh && Date.now() - publicKeyCache.fetchedAt > PUBKEY_REFRESH_INTERVAL_MS)) {
+    const { key } = await monobankRequest<{ key: string }>('/api/merchant/pubkey');
+    publicKeyCache = { key, fetchedAt: Date.now() };
   }
-  return publicKeyCache;
+  return publicKeyCache.key;
 }
 
 export const monobankProvider: PaymentProvider = {
