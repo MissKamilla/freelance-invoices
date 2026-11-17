@@ -37,6 +37,8 @@ export default async function PublicInvoicePage({ params, searchParams }: PagePr
 
   const view = toInvoiceView(invoice);
   const overdue = invoice.status === 'SENT' && invoice.dueDate.getTime() < todayKyiv().getTime();
+  // Успішний платіж при неоплаченому рахунку = розбіжність суми: повторну оплату карткою не пропонуємо.
+  const hasUnmatchedPayment = invoice.status === 'SENT' && invoice.payments.some((p) => p.status === 'SUCCEEDED');
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 2, md: 5 } }}>
@@ -58,7 +60,9 @@ export default async function PublicInvoicePage({ params, searchParams }: PagePr
             view={view}
             paidAt={invoice.paidAt}
             overdue={overdue}
-            cardPayment={<CardPayment token={token} returned={returned ?? undefined} />}
+            cardPayment={
+              <CardPayment token={token} returned={returned ?? undefined} hasUnmatchedPayment={hasUnmatchedPayment} />
+            }
           />
         </Box>
       </Box>

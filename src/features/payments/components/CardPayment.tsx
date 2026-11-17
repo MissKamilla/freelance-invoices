@@ -13,12 +13,17 @@ type CardPaymentProps = {
   token: string;
   /** Стан платежу, з яким клієнт повернувся з платіжної сторінки (?payment=…). */
   returned?: { paymentId: string; status: 'PENDING' | 'FAILED' | 'MISMATCH' | 'OTHER'; failureReason: string | null };
+  /**
+   * Рахунок ще не оплачено, але успішний платіж уже є (сума не збіглася). Кнопку ховаємо незалежно від URL,
+   * інакше клієнт може заплатити вдруге, а розбіжність має розібрати постачальник.
+   */
+  hasUnmatchedPayment?: boolean;
 };
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_LIMIT = 30;
 
-export function CardPayment({ token, returned }: CardPaymentProps) {
+export function CardPayment({ token, returned, hasUnmatchedPayment = false }: CardPaymentProps) {
   const router = useRouter();
   const [state, action, pending] = useActionState(async () => startPaymentAction(token), null);
   const [polls, setPolls] = useState(0);
@@ -45,7 +50,7 @@ export function CardPayment({ token, returned }: CardPaymentProps) {
     );
   }
 
-  if (returned?.status === 'MISMATCH') {
+  if (returned?.status === 'MISMATCH' || hasUnmatchedPayment) {
     return (
       <Alert severity="warning">
         Платіж отримано, але сума відрізняється від суми рахунку. Постачальник перевірить оплату й зв’яжеться з вами.
