@@ -56,6 +56,13 @@ export function InvoicesList({ rows, filter, q, counts }: InvoicesListProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [search, setSearch] = useState(q);
+  // q, який ми самі востаннє записали в URL. Будь-яка інша зміна q — зовнішня навігація (меню «Рахунки», «назад»):
+  // поле має її відобразити, інакше ефект нижче за 300 мс повертав би старий пошук в URL.
+  const [ownQ, setOwnQ] = useState(q);
+  if (q !== ownQ) {
+    setOwnQ(q);
+    setSearch(q);
+  }
 
   const hrefFor = useCallback(
     (nextFilter: InvoiceFilter, nextQ: string) => {
@@ -69,10 +76,14 @@ export function InvoicesList({ rows, filter, q, counts }: InvoicesListProps) {
   );
 
   // Пошук оновлює URL із затримкою — сторінка перерендериться на сервері з новим фільтром.
-  // Коли URL наздогнав поле (search === q), ефект нічого не робить, тому циклу немає.
+  // Коли URL наздогнав поле (search.trim() === q), ефект нічого не робить, тому циклу немає.
   useEffect(() => {
-    if (search === q) return;
-    const timer = setTimeout(() => router.replace(hrefFor(filter, search)), 300);
+    const next = search.trim();
+    if (next === q) return;
+    const timer = setTimeout(() => {
+      setOwnQ(next);
+      router.replace(hrefFor(filter, next), { scroll: false });
+    }, 300);
     return () => clearTimeout(timer);
   }, [search, q, filter, router, hrefFor]);
 
