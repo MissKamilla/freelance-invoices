@@ -1,7 +1,9 @@
 import { nanoid } from 'nanoid';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cancelInvoice } from '@/features/invoices/service';
 import { createPendingPayment } from '@/test/factories';
 import { db } from '@/lib/db';
+import { mockProvider } from './providers/mock';
 import type { ProviderPaymentUpdate } from './providers/types';
 import { applyPaymentUpdate, startPayment } from './service';
 
@@ -144,5 +146,51 @@ describe('startPayment', () => {
     const { invoice, payment } = await createPendingPayment();
     await applyPaymentUpdate(successEvent(payment.externalId!));
     await expect(startPayment(invoice.publicToken!)).rejects.toThrow('не можна оплатити');
+  });
+
+  it('5 паралельних стартів (кілька вкладок): лише один платіж і один checkout', async () => {
+    const { invoice } = await createPendingPayment();
+    await db.payment.deleteMany({ where: { invoiceId: invoice.id } });
+
+    const results = await Promise.allSettled(Array.from({ length: 5 }, () => startPayment(invoice.publicToken!)));
+
+    expect(await db.payment.count({ where: { invoiceId: invoice.id } })).toBe(1);
+    const urls = new Set(results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : [])));
+    expect(urls.size).toBe(1);
+  });
+
+  it('після оплати з розбіжністю суми нову оплату карткою не починаємо (перевірка на сервері, не лише в UI)', async () => {
+    const { invoice, payment } = await createPendingPayment();
+    await applyPaymentUpdate(successEvent(payment.externalId!, { amount: 2_849_999 }));
+
+    await expect(startPayment(invoice.publicToken!)).rejects.toThrow('Платіж за цим рахунком уже надійшов');
+  });
+
+  it('PENDING без посилання, старший за 30 с (процес упав посеред старту), не блокує нову оплату', async () => {
+    const { invoice, payment } = await createPendingPayment();
+    await db.payment.update({ where: { id: payment.id }, data: { createdAt: new Date(Date.now() - 31_000) } });
+
+    const url = await startPayment(invoice.publicToken!);
+
+    expect(url).toContain('/pay/mock/');
+    expect(await db.payment.findUnique({ where: { id: payment.id } })).toMatchObject({ status: 'EXPIRED' });
+    expect(await db.payment.count({ where: { invoiceId: invoice.id, status: 'PENDING' } })).toBe(1);
+  });
+
+  it('рахунок скасовано, поки провайдер створював checkout: платіж не оживає, checkout закривається', async () => {
+    const { userId, invoice } = await createPendingPayment();
+    await db.payment.deleteMany({ where: { invoiceId: invoice.id } });
+    const cancel = vi.fn(async () => {});
+    mockProvider.cancel = cancel;
+    vi.spyOn(mockProvider, 'createCheckout').mockImplementationOnce(async ({ paymentId }) => {
+      await cancelInvoice(userId, invoice.id);
+      return { externalId: `mock_${paymentId}`, checkoutUrl: `http://localhost:3000/pay/mock/${paymentId}` };
+    });
+
+    await expect(startPayment(invoice.publicToken!)).rejects.toThrow('не можна оплатити');
+
+    const row = await db.payment.findFirstOrThrow({ where: { invoiceId: invoice.id } });
+    expect(row).toMatchObject({ status: 'EXPIRED', externalId: null, checkoutUrl: null });
+    expect(cancel).toHaveBeenCalledWith(`mock_${row.id}`);
   });
 });

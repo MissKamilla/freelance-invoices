@@ -8,12 +8,15 @@ import { getActiveProvider, getProvider } from './providers';
 import type { ProviderPaymentUpdate } from './providers/types';
 
 const CHECKOUT_TTL_MS = 60 * 60 * 1000;
+/** PENDING без checkoutUrl довше за це — процес упав посеред старту (таймаут запиту до monobank — 10 с). */
+const CHECKOUT_IN_FLIGHT_MS = 30 * 1000;
 
 /**
  * Старт оплати карткою.
- * 1) Транзакція з блокуванням рядка рахунку: рахунок має бути SENT; прострочені PENDING → EXPIRED;
- *    живий PENDING-платіж використовуємо повторно, інакше створюємо новий.
+ * 1) Транзакція з блокуванням рядка рахунку: рахунок має бути SENT і без успішного платежу; прострочені PENDING →
+ *    EXPIRED; живий PENDING-платіж використовуємо повторно, інакше створюємо новий.
  * 2) Після коміту — запит до провайдера (мережевий виклик не тримає транзакцію відкритою).
+ * 3) checkout зберігаємо лише якщо платіж досі PENDING: поки ходили до провайдера, рахунок могли скасувати.
  */
 export async function startPayment(publicToken: string): Promise<string> {
   const invoice = await db.invoice.findFirst({
@@ -30,21 +33,34 @@ export async function startPayment(publicToken: string): Promise<string> {
     const fresh = await tx.invoice.findUnique({ where: { id: invoice.id }, select: { status: true } });
     if (fresh?.status !== 'SENT') throw new PaymentError('Цей рахунок уже не можна оплатити');
 
+    // Успішний платіж при неоплаченому рахунку = розбіжність суми: другу оплату карткою не приймаємо
+    // (в інтерфейсі кнопки вже немає, але дію можна викликати напряму).
+    const succeeded = await tx.payment.count({ where: { invoiceId: invoice.id, status: 'SUCCEEDED' } });
+    if (succeeded > 0) {
+      throw new PaymentError(
+        'Платіж за цим рахунком уже надійшов, але сума відрізняється — зв’яжіться з постачальником',
+      );
+    }
+
     await tx.payment.updateMany({
-      where: { invoiceId: invoice.id, status: 'PENDING', expiresAt: { lte: now } },
+      where: {
+        invoiceId: invoice.id,
+        status: 'PENDING',
+        OR: [
+          { expiresAt: { lte: now } },
+          // Без checkoutUrl довше за 30 с — процес упав між створенням рядка й відповіддю провайдера.
+          { checkoutUrl: null, createdAt: { lte: new Date(now.getTime() - CHECKOUT_IN_FLIGHT_MS) } },
+        ],
+      },
       data: { status: 'EXPIRED' },
     });
     const live = await tx.payment.findFirst({
-      where: {
-        invoiceId: invoice.id,
-        provider: provider.id,
-        status: 'PENDING',
-        expiresAt: { gt: now },
-        checkoutUrl: { not: null },
-      },
+      where: { invoiceId: invoice.id, provider: provider.id, status: 'PENDING', expiresAt: { gt: now } },
       orderBy: { createdAt: 'desc' },
     });
-    if (live) return { payment: live, reused: true };
+    if (live?.checkoutUrl) return { payment: live, reused: true };
+    // Рядок є, а посилання ще ні: паралельний запит (друга вкладка) саме створює checkout у провайдера.
+    if (live) throw new PaymentError('Оплата вже розпочата в іншій вкладці — спробуйте за кілька секунд');
 
     const created = await tx.payment.create({
       data: {
@@ -60,8 +76,9 @@ export async function startPayment(publicToken: string): Promise<string> {
 
   if (reused && payment.checkoutUrl) return payment.checkoutUrl;
 
+  let checkout: { externalId: string; checkoutUrl: string };
   try {
-    const { externalId, checkoutUrl } = await provider.createCheckout({
+    checkout = await provider.createCheckout({
       paymentId: payment.id,
       amount: payment.amount,
       reference: `invoice-${invoice.number}`,
@@ -69,25 +86,29 @@ export async function startPayment(publicToken: string): Promise<string> {
       redirectUrl: `${env.APP_URL}/i/${publicToken}?payment=${payment.id}`,
       webhookUrl: env.PUBLIC_URL ? `${env.PUBLIC_URL}/api/webhooks/${provider.id.toLowerCase()}` : undefined,
     });
-    await db.$transaction([
-      db.payment.update({ where: { id: payment.id }, data: { externalId, checkoutUrl } }),
-      db.invoiceEvent.create({
-        data: {
-          invoiceId: invoice.id,
-          type: 'PAYMENT_STARTED',
-          meta: { provider: provider.id, paymentId: payment.id },
-        },
-      }),
-    ]);
-    return checkoutUrl;
   } catch (error) {
     console.error('[payments] createCheckout failed', error);
-    await db.payment.update({
-      where: { id: payment.id },
+    await db.payment.updateMany({
+      where: { id: payment.id, status: 'PENDING' },
       data: { status: 'FAILED', failureReason: 'Не вдалося створити платіж у провайдера' },
     });
     throw new PaymentError('Не вдалося розпочати оплату. Спробуйте ще раз або оплатіть переказом.');
   }
+
+  // Поки ходили до провайдера, рахунок могли скасувати чи оплатити (платіж уже EXPIRED) — умовний UPDATE це помітить.
+  const persisted = await db.$transaction(async (tx) => {
+    const { count } = await tx.payment.updateMany({ where: { id: payment.id, status: 'PENDING' }, data: checkout });
+    if (count === 0) return false;
+    await tx.invoiceEvent.create({
+      data: { invoiceId: invoice.id, type: 'PAYMENT_STARTED', meta: { provider: provider.id, paymentId: payment.id } },
+    });
+    return true;
+  });
+  if (!persisted) {
+    await cancelProviderCheckouts([{ provider: provider.id, externalId: checkout.externalId }]);
+    throw new PaymentError('Цей рахунок уже не можна оплатити');
+  }
+  return checkout.checkoutUrl;
 }
 
 export type ApplyResult = {
