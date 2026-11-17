@@ -6,6 +6,7 @@ import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
 import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
 import ContentPasteGoOutlined from '@mui/icons-material/ContentPasteGoOutlined';
 import BlockOutlined from '@mui/icons-material/BlockOutlined';
+import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined';
 import type { InvoiceStatus } from '@/generated/prisma/enums';
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
 import { useNotify } from '@/components/feedback/SnackbarProvider';
@@ -44,6 +45,11 @@ export function InvoiceActions({ invoiceId, number, status, publicUrl }: Invoice
       {publicUrl && status !== 'CANCELLED' && (
         <Button variant="contained" startIcon={<ContentCopyOutlined />} onClick={copyLink}>
           Копіювати посилання
+        </Button>
+      )}
+      {publicUrl && status !== 'CANCELLED' && (
+        <Button variant="outlined" startIcon={<FileDownloadOutlined />} href={`${publicUrl}/pdf`}>
+          PDF
         </Button>
       )}
       {status === 'SENT' && (

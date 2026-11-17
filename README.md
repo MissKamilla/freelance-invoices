@@ -28,3 +28,5 @@ Next.js 16 (App Router) · TypeScript (strict) · MUI · Prisma 7 + PostgreSQL �
 ## Використані шаблони
 
 - Каркас застосунку згенеровано `create-next-app` 16.4.6.
+- Шрифт PT Sans (ParaType, SIL Open Font License) для PDF — `src/pdf/fonts/OFL.txt`.
+- Формат QR-коду — за Правилами НБУ (постанова № 97 від 19.08.2025), перевірено на еталонному прикладі з Правил.
