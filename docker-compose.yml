@@ -1,5 +1,8 @@
 name: freelance-invoices
 
+# Порти прив'язані до 127.0.0.1: база з паролем за замовчуванням і листи з реквізитами
+# не мають бути доступні з локальної мережі. Версії образів закріплені для відтворюваності.
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -8,7 +11,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: invoices
     ports:
-      - '5433:5432'
+      - '127.0.0.1:5433:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -19,18 +22,18 @@ services:
 
   # SMTP-пастка: усі листи застосунку видно на http://localhost:8025
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.33.1
     ports:
-      - '1025:1025'
-      - '8025:8025'
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'
 
   # Inngest Dev Server: фонові задачі, UI на http://localhost:8288
   inngest:
-    image: inngest/inngest:latest
+    image: inngest/inngest:v1.53.0
     command: 'inngest dev -u http://host.docker.internal:3000/api/inngest'
     ports:
-      - '8288:8288'
-      - '8289:8289'
+      - '127.0.0.1:8288:8288'
+      - '127.0.0.1:8289:8289'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
 
