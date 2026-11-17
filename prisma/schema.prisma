@@ -1,0 +1,263 @@
+// Prisma 7: URL бази задається в prisma.config.ts, клієнт генерується в src/generated/prisma.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Better Auth ────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  profile  BusinessProfile?
+  clients  Client[]
+  invoices Invoice[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ─── Домен ──────────────────────────────────────────────────────────────────
+
+enum Currency {
+  UAH
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
+
+enum PaymentProvider {
+  MOCK
+  MONOBANK
+  MANUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  EXPIRED
+  REFUNDED
+}
+
+enum InvoiceEventType {
+  CREATED
+  ISSUED
+  EMAIL_SENT
+  VIEWED
+  PAYMENT_STARTED
+  PAYMENT_FAILED
+  PAID
+  AMOUNT_MISMATCH
+  NEEDS_REFUND
+  REFUNDED
+  REMINDER_SENT
+  CANCELLED
+}
+
+/// Реквізити ФОП, які потрапляють у рахунок.
+model BusinessProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legalName         String // "ФОП Іваненко Олена Петрівна"
+  taxId             String // РНОКПП, 10 цифр
+  iban              String // UA + 27 цифр
+  bankName          String
+  address           String
+  phone             String?
+  taxNote           String // "Платник єдиного податку 3 групи, не платник ПДВ"
+  defaultDueDays    Int      @default(7)
+  nextInvoiceNumber Int      @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("business_profile")
+}
+
+model Client {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  taxId      String? // ЄДРПОУ (8) або РНОКПП (10)
+  email      String
+  address    String?
+  notes      String?
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  invoices   Invoice[]
+
+  @@index([userId])
+  @@map("client")
+}
+
+model Invoice {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client         @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  /// Присвоюється при виставленні (наскрізна нумерація без пропусків).
+  number         Int?
+  status         InvoiceStatus  @default(DRAFT)
+  currency       Currency       @default(UAH)
+  /// Календарні дати за Києвом, збережені як UTC-північ.
+  issueDate      DateTime?      @db.Date
+  dueDate        DateTime       @db.Date
+  contractRef    String? // "Договір № 7 від 01.09.2026"
+  /// Копійки.
+  total          Int
+  notes          String?
+  paymentPurpose String?
+  publicToken    String?        @unique
+  /// Реквізити на момент виставлення — рахунок як документ не змінюється.
+  sellerSnapshot Json?
+  clientSnapshot Json?
+  issuedAt       DateTime?
+  viewedAt       DateTime?
+  paidAt         DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  items          InvoiceItem[]
+  payments       Payment[]
+  events         InvoiceEvent[]
+
+  @@unique([userId, number])
+  @@index([userId, status])
+  @@index([clientId])
+  @@map("invoice")
+}
+
+model InvoiceItem {
+  id                 String  @id @default(cuid())
+  invoiceId          String
+  invoice            Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  position           Int
+  description        String
+  unit               String // "послуга" | "год" | "шт" | "міс"
+  /// Кількість у сотих: 1,5 → 150.
+  quantityHundredths Int
+  /// Копійки.
+  unitPrice          Int
+  /// Копійки, округлено.
+  amount             Int
+
+  @@index([invoiceId])
+  @@map("invoice_item")
+}
+
+model Payment {
+  id                String          @id @default(cuid())
+  invoiceId         String
+  invoice           Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  provider          PaymentProvider
+  status            PaymentStatus   @default(PENDING)
+  /// Копійки.
+  amount            Int
+  currency          Currency        @default(UAH)
+  /// Ідентифікатор платежу в провайдера (invoiceId у monobank).
+  externalId        String?
+  checkoutUrl       String?
+  failureReason     String?
+  expiresAt         DateTime?
+  /// Час останньої події від провайдера — застарілі вебхуки відкидаємо.
+  providerUpdatedAt DateTime?
+  paidAt            DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([provider, externalId])
+  @@index([invoiceId, status])
+  @@map("payment")
+}
+
+model WebhookEvent {
+  id          String          @id @default(cuid())
+  provider    PaymentProvider
+  /// mock: eventId; monobank: invoiceId:status:modifiedDate.
+  dedupeKey   String
+  payload     Json
+  receivedAt  DateTime        @default(now())
+  processedAt DateTime?
+
+  @@unique([provider, dedupeKey])
+  @@map("webhook_event")
+}
+
+model InvoiceEvent {
+  id        String           @id @default(cuid())
+  invoiceId String
+  invoice   Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  type      InvoiceEventType
+  meta      Json?
+  createdAt DateTime         @default(now())
+
+  @@index([invoiceId, createdAt])
+  @@map("invoice_event")
+}
