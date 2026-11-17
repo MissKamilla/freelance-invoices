@@ -1,5 +1,6 @@
 'use client';
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
@@ -25,6 +26,7 @@ type InvoiceActionsProps = {
 };
 
 export function InvoiceActions({ invoiceId, number, status, publicUrl }: InvoiceActionsProps) {
+  const router = useRouter();
   const notify = useNotify();
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [pending, startTransition] = useTransition();
@@ -70,7 +72,14 @@ export function InvoiceActions({ invoiceId, number, status, publicUrl }: Invoice
         variant="outlined"
         startIcon={<ContentPasteGoOutlined />}
         disabled={pending}
-        onClick={() => run(() => duplicateInvoiceAction(invoiceId), 'Створено копію')}
+        onClick={() =>
+          startTransition(async () => {
+            const result = await duplicateInvoiceAction(invoiceId);
+            if (!result.ok) return notify(result.error, 'error');
+            notify('Створено копію');
+            router.push(`/invoices/${result.data.id}`);
+          })
+        }
       >
         Дублювати
       </Button>

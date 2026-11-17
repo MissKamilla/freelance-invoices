@@ -95,8 +95,12 @@ export function InvoiceEditor({ invoiceId, clients: initialClients, defaultValue
     if (!invoiceId) return;
     setDeleting(true);
     const result = await deleteDraftAction(invoiceId);
-    // Успіх — redirect на сервері; сюди потрапляємо лише з помилкою.
-    if (!result.ok) notify(result.error, 'error');
+    if (result.ok) {
+      notify('Чернетку видалено');
+      router.replace('/invoices');
+      return;
+    }
+    notify(result.error, 'error');
     setDeleting(false);
     setConfirmDelete(false);
   };

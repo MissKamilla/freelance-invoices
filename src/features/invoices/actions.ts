@@ -1,6 +1,5 @@
 'use server';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { INVALID_REQUEST, parseIdArg } from '@/lib/action-args';
 import { fail, fromZodError, ok, type ActionResult } from '@/lib/action-result';
 import { requireUser } from '@/lib/session';
@@ -45,17 +44,16 @@ export async function saveInvoiceDraftAction(input: unknown, idArg?: unknown): P
   });
 }
 
+/** Навігацію після видалення/дублювання робить клієнт: redirect() у дії відхиляє проміс і ховає результат. */
 export async function deleteDraftAction(idArg: unknown): Promise<ActionResult> {
   const user = await requireUser();
   const id = parseIdArg(idArg);
   if (!id) return fail(INVALID_REQUEST);
-  const result = await guard(async () => {
+  return guard(async () => {
     await deleteDraft(user.id, id);
+    revalidatePath('/invoices');
     return ok();
   });
-  if (!result.ok) return result;
-  revalidatePath('/invoices');
-  redirect('/invoices');
 }
 
 export async function issueInvoiceAction(idArg: unknown): Promise<ActionResult<{ number: number }>> {
@@ -100,14 +98,15 @@ export async function markInvoicePaidAction(idArg: unknown): Promise<ActionResul
   });
 }
 
-export async function duplicateInvoiceAction(idArg: unknown): Promise<ActionResult> {
+export async function duplicateInvoiceAction(idArg: unknown): Promise<ActionResult<{ id: string }>> {
   const user = await requireUser();
   const id = parseIdArg(idArg);
   if (!id) return fail(INVALID_REQUEST);
-  const result = await guard(async () => ok(await duplicateInvoice(user.id, id)));
-  if (!result.ok) return result;
-  revalidatePath('/invoices');
-  redirect(`/invoices/${result.data.id}`);
+  return guard(async () => {
+    const copy = await duplicateInvoice(user.id, id);
+    revalidatePath('/invoices');
+    return ok({ id: copy.id });
+  });
 }
 
 /** Між ручними нагадуваннями — не менше години: кнопка не має перетворюватися на спам клієнту. */
