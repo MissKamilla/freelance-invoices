@@ -4,15 +4,12 @@ import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
-import { useNotify } from '@/components/feedback/SnackbarProvider';
+import { useCopy } from '@/components/feedback/useCopy';
 
 /** Підпис + значення з кнопкою «копіювати» (IBAN, призначення платежу тощо). */
 export function CopyField({ label, value, copyValue }: { label: string; value: string; copyValue?: string }) {
-  const notify = useNotify();
-  const copy = async () => {
-    await navigator.clipboard.writeText(copyValue ?? value);
-    notify(`${label}: скопійовано`);
-  };
+  const copyToClipboard = useCopy();
+  const copy = () => copyToClipboard(copyValue ?? value, `${label}: скопійовано`);
 
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>

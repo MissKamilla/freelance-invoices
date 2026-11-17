@@ -11,6 +11,7 @@ import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActive
 import type { InvoiceStatus } from '@/generated/prisma/enums';
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
 import { useNotify } from '@/components/feedback/SnackbarProvider';
+import { useCopy } from '@/components/feedback/useCopy';
 import type { ActionResult } from '@/lib/action-result';
 import { cancelInvoiceAction, duplicateInvoiceAction, markInvoicePaidAction, remindInvoiceAction } from '../actions';
 
@@ -35,11 +36,8 @@ export function InvoiceActions({ invoiceId, number, status, publicUrl }: Invoice
       setConfirm(null);
     });
 
-  const copyLink = async () => {
-    if (!publicUrl) return;
-    await navigator.clipboard.writeText(publicUrl);
-    notify('Посилання для клієнта скопійовано');
-  };
+  const copy = useCopy();
+  const copyLink = () => publicUrl && copy(publicUrl, 'Посилання для клієнта скопійовано');
 
   return (
     <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>

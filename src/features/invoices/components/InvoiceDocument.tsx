@@ -14,7 +14,7 @@ import { formatIban } from '@/lib/iban';
 import { formatAmount } from '@/lib/money';
 import type { InvoiceView } from '../view';
 
-function Party({ title, lines }: { title: string; lines: (string | null | false)[] }) {
+function Party({ title, lines }: { title: string; lines: React.ReactNode[] }) {
   return (
     <Box>
       <Typography variant="overline" color="text.secondary">
@@ -50,7 +50,12 @@ export function InvoiceDocument({ view }: { view: InvoiceView }) {
               seller.legalName,
               `РНОКПП ${seller.taxId}`,
               seller.address,
-              `IBAN ${formatIban(seller.iban)}`,
+              <>
+                IBAN{' '}
+                <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
+                  {formatIban(seller.iban)}
+                </Box>
+              </>,
               seller.bankName,
               seller.taxNote,
             ]}
