@@ -6,6 +6,8 @@ const publicRouteHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Не розкриваємо фреймворк у заголовку X-Powered-By.
+  poweredByHeader: false,
   // react-pdf працює лише в Node.js і не повинен бандлитися.
   serverExternalPackages: ['@react-pdf/renderer'],
   // Значок Next.js dev tools не перекриває аватар у сайдбарі.
