@@ -3,7 +3,6 @@
 > Тестове завдання (2-й етап) на позицію **Trainee Fullstack Developer (Next.js / TypeScript)** у **Doc2Pay**.
 > Умови: https://github.com/eloicompany/vacancy-product-task — тема №2: «Фрилансер виставляє рахунок, клієнт оплачує його за посиланням».
 > Бюджет: **3–4 дні**. Робоче демо (P0) — до кінця Дня 3, P1 — День 4.
-> Особисті нотатки (стратегія, підготовка до дзвінка) — у `NOTES.local.md`. **Цей файл ніколи не комітимо.**
 
 ---
 
@@ -14,8 +13,7 @@
 - Апостроф у JSX-тексті — типографський `’` (інакше ESLint `react/no-unescaped-entities`).
 - Стек зафіксований (розділ 4). Не додавати бібліотеки без явної потреби, не замінювати обрані.
 - Коміти маленькі й осмислені, Conventional Commits (`feat(invoices): ...`) — історія комітів оцінюється.
-- Після кожного етапу: `pnpm lint && pnpm typecheck && pnpm test` (+ `pnpm test:integration`, коли змінюється робота з БД; потрібен запущений docker compose).
-- `NOTES.local.md` має бути в `.gitignore`; не згадувати його вміст у коді, README чи комітах.
+- Після кожного етапу: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test` (+ `pnpm test:integration`, коли змінюється робота з БД; потрібен запущений docker compose).
 
 **Домен і дані**
 - **Гроші — тільки `Int` у копійках.** Жодних `float` для сум. Відображення — лише через `formatMoney()`.
@@ -210,7 +208,6 @@ Nodemailer ──SMTP──► Mailpit (http://localhost:8025)
 ```
 freelance-invoices/
 ├─ CLAUDE.md · README.md · .env.example · .nvmrc · docker-compose.yml · prisma.config.ts
-├─ NOTES.local.md                          # особисте, у .gitignore
 ├─ prisma/            schema.prisma · migrations/ · seed.ts
 ├─ .github/workflows/ ci.yml
 └─ src/
@@ -595,7 +592,7 @@ PAID:     ✓ «Оплачено 16.11.2026 о 14:32. Дякуємо!» — кн
 ### День 1 — Фундамент (≈ 9.5 год)
 | Задача | Год |
 |---|---|
-| Ініціалізація: `create-next-app` **у тимчасову теку** (він не працює в непорожній, а тут уже є CLAUDE.md) → перенести файли; pnpm, `.nvmrc`, strict tsconfig, `eslint .`, Prettier; `git init`, `.gitignore` з `NOTES.local.md` | 0.75 |
+| Ініціалізація: `create-next-app` **у тимчасову теку** (він не працює в непорожній, а тут уже є CLAUDE.md) → перенести файли; pnpm, `.nvmrc`, strict tsconfig, `eslint .`, Prettier; `git init`, `.gitignore` | 0.75 |
 | Docker Compose (postgres :5433, mailpit, inngest), `.env.example`, `env.ts`, каркас README | 1 |
 | Prisma 7: генератор з `output`, `prisma.config.ts` (dotenv, seed), adapter-pg, схема, міграція, `db.ts` | 1.5 |
 | MUI v9: `AppRouterCacheProvider`, тема, `ukUA`, обгортка `Link`, layout із сайдбаром, Snackbar-провайдер | 2 |
@@ -698,7 +695,7 @@ PUBLIC_URL=
 далі `DATABASE_URL='postgres://postgres:postgres@localhost:51214/template1?sslmode=disable'` для `prisma migrate deploy` і `pnpm dev`.
 Mailpit та Inngest у цьому режимі недоступні.
 
-**Скрипти `package.json`:** `dev`, `build`, `start`, `lint` (`eslint .`), `typecheck` (`tsc --noEmit`), `test`, `test:watch`, `format`,
+**Скрипти `package.json`:** `dev`, `build`, `start`, `lint` (`eslint .`), `typecheck` (`tsc --noEmit`), `test`, `test:watch`, `test:integration`, `format`, `format:check`,
 `bootstrap`, `db:migrate`, `db:seed`, `db:studio`, `db:reset`, `postinstall` (`prisma generate`).
 (Не `setup` — у pnpm це вбудована команда.)
 
@@ -733,8 +730,15 @@ Mailpit та Inngest у цьому режимі недоступні.
 (редактор, виставлення, список, історія), публічна сторінка з QR НБУ, PDF, оплата Mock + monobank (адаптер),
 листи, Inngest-нагадування, дашборд, CI, README зі скриншотами.
 
-**Перевірено:** 125 unit + 19 інтеграційних тестів; production-збірка; браузерний E2E-прогін (puppeteer-core
-з локальним Chrome, поза репозиторієм); чистий клон → `pnpm bootstrap` з порожньої БД.
+**Аудит і hardening (17.11.2026, після `v1.0`):** верхні межі полів позиції (INT4), заборона другої оплати
+карткою після розбіжності суми, ліміт тіла вебхука (413), cooldown ручних нагадувань, throttle запиту pubkey monobank,
+security-заголовки (`Referrer-Policy: no-referrer` для `/i/*`), запобіжник `env.ts` для production з демо-налаштуваннями,
+кореневий `error.tsx` і `not-found.tsx` кабінету, clipboard-fallback, блокування рядка при виставленні, окремі
+Inngest-кроки для листа й події, лист фрилансеру про прострочення, Prettier (120) + `format:check` у CI,
+Docker-порти лише на 127.0.0.1 і закріплені образи, `pnpm.overrides` для транзитивних advisories.
+
+**Перевірено:** 145 unit + 20 інтеграційних тестів; production-збірка; браузерний E2E-прогін (puppeteer-core
+з локальним Chrome, поза репозиторієм); чистий клон → `pnpm bootstrap` з порожньої БД; `pnpm audit --prod` чистий.
 
 **Не перевірено (потрібна людина):**
 - monobank sandbox зі справжнім тестовим токеном (логіка покрита тестами з підміненим API);
