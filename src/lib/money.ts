@@ -5,6 +5,9 @@
 
 /** 10 млн грн — верхня межа суми рахунку (вміщується в Postgres Int з запасом). */
 export const MAX_INVOICE_TOTAL = 1_000_000_000;
+/** Межі окремих полів позиції: Postgres Int — 32-бітний, тому перевіряємо не лише підсумок. */
+export const MAX_UNIT_PRICE = MAX_INVOICE_TOTAL;
+export const MAX_QUANTITY_HUNDREDTHS = 100_000_000; // 1 000 000 одиниць
 
 // \s у JS покриває й нерозривні пробіли (U+00A0, U+202F), які ставить Intl.
 const SPACES = /\s/g;
