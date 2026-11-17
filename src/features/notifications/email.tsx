@@ -35,10 +35,28 @@ async function loadIssued(invoiceId: string) {
   };
 }
 
+type SendOptions = {
+  /**
+   * Записати подію в історію одразу після відправки. Inngest робить це окремим кроком: якщо запис події впаде,
+   * ретрай не надішле лист удруге.
+   */
+  recordEvent?: boolean;
+};
+
+export type SendResult = { sent: false } | { sent: true; to: string };
+
+/** Подія «лист надіслано» / «нагадування надіслано» в історії рахунку. */
+export async function recordEmailEvent(invoiceId: string, type: 'EMAIL_SENT' | 'REMINDER_SENT', meta: object) {
+  await db.invoiceEvent.create({ data: { invoiceId, type, meta } });
+}
+
 /** Клієнту: рахунок із посиланням на оплату. */
-export async function sendInvoiceIssuedEmail(invoiceId: string) {
+export async function sendInvoiceIssuedEmail(
+  invoiceId: string,
+  { recordEvent = true }: SendOptions = {},
+): Promise<SendResult> {
   const data = await loadIssued(invoiceId);
-  if (!data || data.invoice.status !== 'SENT') return;
+  if (!data || data.invoice.status !== 'SENT') return { sent: false };
 
   await sendEmail({
     to: data.client.email,
@@ -54,9 +72,8 @@ export async function sendInvoiceIssuedEmail(invoiceId: string) {
       />
     ),
   });
-  await db.invoiceEvent.create({
-    data: { invoiceId, type: 'EMAIL_SENT', meta: { kind: 'invoice', to: data.client.email } },
-  });
+  if (recordEvent) await recordEmailEvent(invoiceId, 'EMAIL_SENT', { kind: 'invoice', to: data.client.email });
+  return { sent: true, to: data.client.email };
 }
 
 /** Клієнту — підтвердження оплати; фрилансеру — «Вам оплатили» (крім ручної позначки, яку він зробив сам). */
@@ -98,7 +115,11 @@ export async function sendInvoicePaidEmails(invoiceId: string, { notifyFreelance
 }
 
 /** Клієнту: нагадування про оплату. Нічого не робить, якщо рахунок уже оплачено чи скасовано. */
-export async function sendReminderEmail(invoiceId: string, kind: ReminderKind) {
+export async function sendReminderEmail(
+  invoiceId: string,
+  kind: ReminderKind,
+  { recordEvent = true }: SendOptions = {},
+): Promise<SendResult> {
   const data = await loadIssued(invoiceId);
   if (!data || data.invoice.status !== 'SENT') return { sent: false };
 
@@ -116,6 +137,6 @@ export async function sendReminderEmail(invoiceId: string, kind: ReminderKind) {
       />
     ),
   });
-  await db.invoiceEvent.create({ data: { invoiceId, type: 'REMINDER_SENT', meta: { kind, to: data.client.email } } });
-  return { sent: true };
+  if (recordEvent) await recordEmailEvent(invoiceId, 'REMINDER_SENT', { kind, to: data.client.email });
+  return { sent: true, to: data.client.email };
 }

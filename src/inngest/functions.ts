@@ -2,16 +2,42 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { env } from '@/lib/env';
 import { planReminders } from '@/lib/reminders';
-import { sendInvoiceIssuedEmail, sendInvoicePaidEmails, sendReminderEmail } from '@/features/notifications/email';
+import {
+  recordEmailEvent,
+  sendInvoiceIssuedEmail,
+  sendInvoicePaidEmails,
+  sendReminderEmail,
+  type SendResult,
+} from '@/features/notifications/email';
+import type { ReminderKind } from '@/lib/reminders';
 import { inngest, invoiceCancelled, invoiceIssued, invoicePaid, reminderRequested } from './client';
 
 const sameInvoice = 'async.data.invoiceId == event.data.invoiceId';
+
+type Step = Parameters<Parameters<typeof inngest.createFunction>[1]>[0]['step'];
+
+/** Відправка листа й запис події — окремі кроки: ретрай запису події не дублює лист. */
+async function sendReminderStep(step: Step, invoiceId: string, kind: ReminderKind) {
+  const result: SendResult = await step.run(`send-${kind}`, () =>
+    sendReminderEmail(invoiceId, kind, { recordEvent: false }),
+  );
+  if (result.sent)
+    await step.run(`record-${kind}`, () => recordEmailEvent(invoiceId, 'REMINDER_SENT', { kind, to: result.to }));
+}
 
 /** Лист клієнту з рахунком — у фоні, з ретраями. */
 export const sendInvoiceEmail = inngest.createFunction(
   { id: 'send-invoice-email', triggers: [invoiceIssued] },
   async ({ event, step }) => {
-    await step.run('send-invoice-email', () => sendInvoiceIssuedEmail(event.data.invoiceId));
+    const { invoiceId } = event.data;
+    const result: SendResult = await step.run('send-invoice-email', () =>
+      sendInvoiceIssuedEmail(invoiceId, { recordEvent: false }),
+    );
+    if (result.sent) {
+      await step.run('record-email-event', () =>
+        recordEmailEvent(invoiceId, 'EMAIL_SENT', { kind: 'invoice', to: result.to }),
+      );
+    }
   },
 );
 
@@ -48,10 +74,10 @@ export const invoiceReminders = inngest.createFunction(
 
     if (plan.beforeDue) {
       await step.sleepUntil('wait-before-due', plan.beforeDue);
-      await step.run('remind-before-due', () => sendReminderEmail(event.data.invoiceId, 'before_due'));
+      await sendReminderStep(step, event.data.invoiceId, 'before_due');
     }
     await step.sleepUntil('wait-overdue', plan.overdue);
-    await step.run('remind-overdue', () => sendReminderEmail(event.data.invoiceId, 'overdue'));
+    await sendReminderStep(step, event.data.invoiceId, 'overdue');
   },
 );
 
@@ -67,7 +93,7 @@ export const sendPaidEmails = inngest.createFunction(
 export const manualReminder = inngest.createFunction(
   { id: 'manual-reminder', triggers: [reminderRequested] },
   async ({ event, step }) => {
-    await step.run('send-reminder', () => sendReminderEmail(event.data.invoiceId, 'manual'));
+    await sendReminderStep(step, event.data.invoiceId, 'manual');
   },
 );
 
