@@ -24,7 +24,8 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
       <Snackbar
         key={toast?.key}
         open={open}
-        autoHideDuration={4000}
+        // Помилку користувач має встигнути прочитати — її закривають вручну (WCAG 2.2.1).
+        autoHideDuration={toast?.severity === 'error' ? null : 4000}
         onClose={(_, reason) => reason !== 'clickaway' && setOpen(false)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >

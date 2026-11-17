@@ -24,6 +24,8 @@ const theme = createTheme(
       button: { textTransform: 'none', fontWeight: 600 },
     },
     components: {
+      // Paper без тіні (elevation: 0) зливається з білою карткою — випадаючому списку клієнтів повертаємо тінь.
+      MuiAutocomplete: { defaultProps: { slotProps: { paper: { elevation: 8 } } } },
       MuiButton: { defaultProps: { disableElevation: true } },
       MuiCard: { defaultProps: { variant: 'outlined' } },
       MuiPaper: { defaultProps: { elevation: 0 } },
