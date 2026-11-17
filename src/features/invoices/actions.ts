@@ -2,6 +2,7 @@
 import { revalidatePath } from 'next/cache';
 import { INVALID_REQUEST, parseIdArg } from '@/lib/action-args';
 import { fail, fromZodError, ok, type ActionResult } from '@/lib/action-result';
+import { createRateLimiter } from '@/lib/rate-limit';
 import { requireUser } from '@/lib/session';
 import { sendInvoiceIssuedEmail, sendInvoicePaidEmails, sendReminderEmail } from '@/features/notifications/email';
 import { invoiceCancelled, invoiceIssued, invoicePaid, reminderRequested } from '@/inngest/client';
@@ -112,6 +113,8 @@ export async function duplicateInvoiceAction(idArg: unknown): Promise<ActionResu
 
 /** Між ручними нагадуваннями — не менше години: кнопка не має перетворюватися на спам клієнту. */
 const REMINDER_COOLDOWN_MS = 60 * 60 * 1000;
+/** Подія REMINDER_SENT з'являється вже після відправки (Inngest) — подвійний клік до неї стримує лічильник. */
+const remindByInvoice = createRateLimiter(1, REMINDER_COOLDOWN_MS);
 
 /** Ручне «Нагадати» — лише для виставленого неоплаченого рахунку. */
 export async function remindInvoiceAction(idArg: unknown): Promise<ActionResult> {
@@ -124,6 +127,7 @@ export async function remindInvoiceAction(idArg: unknown): Promise<ActionResult>
   if (lastReminder && Date.now() - lastReminder.createdAt.getTime() < REMINDER_COOLDOWN_MS) {
     return fail('Нагадування вже надсилали менше години тому');
   }
+  if (!remindByInvoice.hit(id)) return fail('Нагадування вже надсилали менше години тому');
 
   await dispatch(reminderRequested.create({ invoiceId: id }), () => sendReminderEmail(id, 'manual'));
   revalidatePath(`/invoices/${id}`);

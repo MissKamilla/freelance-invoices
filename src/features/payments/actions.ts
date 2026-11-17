@@ -6,6 +6,7 @@ import { fail, type ActionResult } from '@/lib/action-result';
 import { db } from '@/lib/db';
 import { env } from '@/lib/env';
 import { hmacSha256Hex } from '@/lib/hmac';
+import { createRateLimiter } from '@/lib/rate-limit';
 import { PaymentError } from './errors';
 import { chargeMockCard } from './mock-gateway';
 import { MOCK_SIGNATURE_HEADER, type MockWebhookEvent } from './providers/mock';
@@ -31,6 +32,9 @@ export async function startPaymentAction(tokenArg: unknown): Promise<ActionResul
  * Пам'ять процесу достатня: mock-провайдер заборонений для публічного розгортання (див. env.ts).
  */
 const chargingPayments = new Set<string>();
+
+/** Клієнт опитує статус кожні 2 с (CardPayment): частіше ніж раз на 1,5 с до провайдера за один платіж не ходимо. */
+const reconcileByPayment = createRateLimiter(1, 1500);
 
 /**
  * Сабміт форми на сторінці тестового шлюзу: «списуємо» гроші з тестової картки й надсилаємо
@@ -95,7 +99,7 @@ async function chargeAndNotify(paymentId: string, cardNumber: string): Promise<A
 export async function reconcilePaymentAction(paymentIdArg: unknown, tokenArg: unknown): Promise<void> {
   const paymentId = parseIdArg(paymentIdArg);
   const token = parseIdArg(tokenArg);
-  if (!paymentId || !token) return;
+  if (!paymentId || !token || !reconcileByPayment.hit(paymentId)) return;
   try {
     const result = await reconcilePayment(paymentId, token);
     if (result) await afterPaymentApplied(result);
