@@ -166,7 +166,7 @@ MUI, Vitest, Zod, Route Handlers + Server Actions.
 | БД | **PostgreSQL 17** (Docker, порт 5433) | |
 | ORM | **Prisma 7** + `@prisma/adapter-pg`, `prisma.config.ts` | стабільна версія |
 | Auth | **Better Auth** (email + пароль, Prisma-адаптер, `nextCookies()`) | рекомендований для нових проєктів |
-| Фонові задачі | **Inngest** (SDK v4) + Inngest Dev Server у Docker | durable-функції, `sleepUntil`, `cancelOn` |
+| Фонові задачі | **Inngest** (SDK v4), self-hosted у Docker + Redis (AOF) | durable-функції, `sleepUntil`, `cancelOn`; нагадування переживають перезапуск |
 | Email | **Nodemailer → Mailpit** (UI на :8025), шаблони **React Email** | працює локально без ключів |
 | PDF | **@react-pdf/renderer** + TTF з кирилицею (Roboto / Noto Sans) | генерація в Route Handler |
 | QR | **qrcode** + власний генератор payload НБУ | оплата переказом на IBAN |
@@ -193,7 +193,7 @@ Tailwind/shadcn (UI на MUI).
 Mock / monobank ──POST webhook──► /api/webhooks/{mock,monobank}
                                       │   підпис → applyPaymentUpdate() (транзакція, дедуп)
                                       └── inngest.send('invoice/paid')
-Inngest Dev Server ◄──► /api/inngest   (email, нагадування)
+Inngest (self-hosted) ◄──► /api/inngest   (email, нагадування; черга — Redis)
 Nodemailer ──SMTP──► Mailpit (http://localhost:8025)
 ```
 
@@ -435,7 +435,9 @@ interface PaymentProvider {
 - **`invoice/paid`** → підтвердження оплати клієнту + «Вам оплатили» фрилансеру.
 - **`invoice/reminder.requested`** → ручне «Нагадати» з інтерфейсу.
 - **`REMINDER_DEMO_MODE=true`** → нагадування через 1 і 2 хвилини замість днів (для демонстрації).
-- Усі `inngest.send` — у `try/catch` з логуванням: без Dev Server застосунок працює, лише без листів.
+- Усі `inngest.send` — у `try/catch` з логуванням: без Inngest застосунок працює, негайні листи — синхронно.
+- Локально — `inngest start` з Redis (AOF) і SQLite у томах, Mailpit — з базою в томі: Inngest Dev Server тримає
+  чергу в пам'яті, і після перезапуску Docker заплановані нагадування губилися (перевірено, `--persist` не допомагає).
 
 ### 5.8 Безпека
 - Публічне посилання — `nanoid(24)`, а не ID з БД; `robots: noindex`; на сторінці лише дані рахунку.
@@ -669,7 +671,7 @@ pnpm bootstrap                  # docker compose up -d --wait (healthcheck postg
 pnpm dev                        # http://localhost:3000
 ```
 - Демо-акаунт: `demo@freelance.local` / `demo12345` (або кнопка «Демо-вхід»).
-- Листи: http://localhost:8025 (Mailpit) · фонові задачі: http://localhost:8288 (Inngest Dev Server).
+- Листи: http://localhost:8025 (Mailpit) · фонові задачі: http://localhost:8288 (Inngest).
 - Monobank (необов'язково): `PAYMENT_PROVIDER=monobank`, `MONOBANK_TOKEN=<тестовий токен з api.monobank.ua>`,
   `PUBLIC_URL=<https-тунель>` — лише якщо потрібні вебхуки (без нього працює звірка статусу).
 
@@ -683,7 +685,10 @@ DEMO_MODE=true
 SMTP_HOST=localhost
 SMTP_PORT=1025
 MAIL_FROM="Freelance Invoices <no-reply@freelance.local>"
-INNGEST_DEV=1
+INNGEST_DEV=0
+INNGEST_BASE_URL=http://localhost:8288
+INNGEST_EVENT_KEY=local-inngest-event-key
+INNGEST_SIGNING_KEY=<64 hex, як у docker-compose.yml>
 REMINDER_DEMO_MODE=false
 PAYMENT_PROVIDER=mock
 MOCK_WEBHOOK_SECRET=dev-secret

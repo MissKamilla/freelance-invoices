@@ -29,7 +29,7 @@
 ```bash
 cp .env.example .env
 pnpm install
-pnpm bootstrap   # docker compose (postgres :5433 · mailpit :8025 · inngest :8288) + міграції + демо-дані
+pnpm bootstrap   # docker compose (postgres :5433 · mailpit :8025 · inngest :8288 · redis) + міграції + демо-дані
 pnpm dev         # http://localhost:3000
 ```
 
@@ -37,7 +37,7 @@ pnpm dev         # http://localhost:3000
 |---|---|
 | Застосунок | http://localhost:3000 — кнопка «Демо-вхід» або `demo@freelance.local` / `demo12345` |
 | Листи (Mailpit) | http://localhost:8025 |
-| Фонові задачі (Inngest Dev Server) | http://localhost:8288 |
+| Фонові задачі (Inngest) | http://localhost:8288 |
 
 `pnpm db:seed` перестворює демо-акаунт з початковими даними.
 
@@ -89,7 +89,7 @@ PDF рахунку з QR-кодом НБУ:
 | UI | MUI v9, MUI X Date Pickers і Charts |
 | Дані | PostgreSQL 17, Prisma 7 (`@prisma/adapter-pg`) |
 | Автентифікація | Better Auth (email + пароль) |
-| Фонові задачі | Inngest (листи, нагадування з `sleepUntil` і `cancelOn`) |
+| Фонові задачі | Inngest self-hosted + Redis (листи, нагадування з `sleepUntil` і `cancelOn`) |
 | Пошта | Nodemailer + React Email → Mailpit |
 | Документи | `@react-pdf/renderer` (PT Sans), власний генератор QR НБУ |
 | Валідація й тести | Zod 4, Vitest (unit + integration), GitHub Actions |
@@ -147,10 +147,12 @@ sequenceDiagram
 - **QR НБУ, формат 002** — його читають застосунки всіх банків; реалізація звірена байт у байт з еталонним
   прикладом із Правил НБУ (постанова № 97), а тест розпізнає згенерований QR декодером попри знак гривні в центрі.
 - **Inngest:** нагадування «сплять» до 10:00 за Києвом і автоматично скасовуються подією оплати чи скасування.
+  Локально Inngest працює в self-hosted режимі з чергою в Redis на диску, а Mailpit — з базою на диску:
+  заплановані нагадування й отримані листи переживають перезапуск Docker (Inngest Dev Server тримав їх лише в пам'яті).
   Без Inngest застосунок працює: негайні листи надсилаються синхронно, але нагадування за розкладом
   не надсилаються — їх виконує лише Inngest.
 - **Запобіжники для production:** з публічним `APP_URL` застосунок не стартує з демо-акаунтом, mock-оплатою,
-  `INNGEST_DEV` чи секретами з `.env.example`; публічні сторінки віддаються з `Referrer-Policy: no-referrer`
+  `INNGEST_DEV=1` чи секретами й ключами з `.env.example`; публічні сторінки віддаються з `Referrer-Policy: no-referrer`
   (токен не потрапляє в Referer банку), без `X-Powered-By`; тіло вебхука читається потоково з межею 64 КБ
   (і без `Content-Length`); вхід, реєстрація, звірка статусу оплати й ручні нагадування обмежені за частотою
   лічильником у пам'яті процесу (Server Actions обходять HTTP-ліміт Better Auth; спільний лічильник у Redis — у планах).
