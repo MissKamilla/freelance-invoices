@@ -13,9 +13,15 @@ export async function afterPaymentApplied(result: ApplyResult) {
   await dispatch(invoicePaid.create({ invoiceId, notifyFreelancer: true }), () => sendInvoicePaidEmails(invoiceId));
 }
 
-/** Спільний обробник вебхуків: підпис по сирому тілу → applyPaymentUpdate → 200 / 401 / 400 / 500. */
+/** Події провайдерів — кілька сотень байтів; усе більше відкидаємо ще до перевірки підпису. */
+const MAX_BODY_BYTES = 64 * 1024;
+
+/** Спільний обробник вебхуків: ліміт розміру → підпис по сирому тілу → applyPaymentUpdate → 200 / 401 / 400 / 413 / 500. */
 export async function handleWebhook(provider: PaymentProvider, request: Request): Promise<Response> {
+  const declaredLength = Number(request.headers.get('content-length'));
+  if (declaredLength > MAX_BODY_BYTES) return Response.json({ error: 'payload too large' }, { status: 413 });
   const rawBody = await request.text();
+  if (rawBody.length > MAX_BODY_BYTES) return Response.json({ error: 'payload too large' }, { status: 413 });
 
   let update;
   try {

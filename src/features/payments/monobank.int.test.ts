@@ -79,6 +79,27 @@ describe('monobank webhook', () => {
   });
 });
 
+describe('webhook body limit', () => {
+  it('завелике тіло → 413 ще до перевірки підпису й без звернення до monobank', async () => {
+    const fetchMock = stubMonobankApi();
+    const { invoice, externalId } = await monobankPayment();
+    const body = JSON.stringify({ ...statusBody(externalId), padding: 'x'.repeat(70_000) });
+
+    const response = await handleWebhook(
+      monobankProvider,
+      new Request('http://localhost/api/webhooks/monobank', {
+        method: 'POST',
+        body,
+        headers: { 'x-sign': sign(body) },
+      }),
+    );
+
+    expect(response.status).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(await db.invoice.findUnique({ where: { id: invoice.id } })).toMatchObject({ status: 'SENT' });
+  });
+});
+
 describe('reconcilePayment (звірка без вебхука)', () => {
   it('отримує статус у провайдера й застосовує його тим самим шляхом, що й вебхук', async () => {
     const { invoice, payment, externalId } = await monobankPayment();
