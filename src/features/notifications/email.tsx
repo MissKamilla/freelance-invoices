@@ -1,6 +1,7 @@
 import 'server-only';
 import { InvoiceIssuedEmail } from '@/emails/InvoiceIssuedEmail';
 import { InvoicePaidEmail } from '@/emails/InvoicePaidEmail';
+import { OverdueNoticeEmail } from '@/emails/OverdueNoticeEmail';
 import { PaymentConfirmationEmail } from '@/emails/PaymentConfirmationEmail';
 import { ReminderEmail, reminderSubject } from '@/emails/ReminderEmail';
 import { clientSnapshotSchema, sellerSnapshotSchema } from '@/features/invoices/snapshot';
@@ -114,7 +115,10 @@ export async function sendInvoicePaidEmails(invoiceId: string, { notifyFreelance
   }
 }
 
-/** Клієнту: нагадування про оплату. Нічого не робить, якщо рахунок уже оплачено чи скасовано. */
+/**
+ * Клієнту: нагадування про оплату; при простроченні — ще й сповіщення фрилансеру.
+ * Нічого не робить, якщо рахунок уже оплачено чи скасовано.
+ */
 export async function sendReminderEmail(
   invoiceId: string,
   kind: ReminderKind,
@@ -137,6 +141,21 @@ export async function sendReminderEmail(
       />
     ),
   });
+  if (kind === 'overdue') {
+    await sendEmail({
+      to: data.invoice.user.email,
+      subject: `Рахунок № ${data.number} прострочено — ${data.client.name}`,
+      react: (
+        <OverdueNoticeEmail
+          clientName={data.client.name}
+          number={data.number}
+          total={formatMoney(data.invoice.total)}
+          dueDate={formatDate(data.invoice.dueDate)}
+          url={`${env.APP_URL}/invoices/${invoiceId}`}
+        />
+      ),
+    });
+  }
   if (recordEvent) await recordEmailEvent(invoiceId, 'REMINDER_SENT', { kind, to: data.client.email });
   return { sent: true, to: data.client.email };
 }
