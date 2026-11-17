@@ -48,9 +48,13 @@ function filterWhere(filter: InvoiceFilter, today: Date): Prisma.InvoiceWhereInp
   }
 }
 
+/** Номер рахунку — Postgres INT4: більше число в where дає помилку БД (P2020) замість «нічого не знайдено». */
+const MAX_INVOICE_NUMBER = 2_147_483_647;
+
 export function listInvoices(userId: string, { filter, q, today }: { filter: InvoiceFilter; q: string; today: Date }) {
-  const query = q.trim();
-  const number = /^\d+$/.test(query) ? Number(query) : null;
+  const query = q.trim().slice(0, 100);
+  const parsed = /^\d{1,10}$/.test(query) ? Number(query) : null;
+  const number = parsed !== null && parsed <= MAX_INVOICE_NUMBER ? parsed : null;
   return db.invoice.findMany({
     where: {
       userId,

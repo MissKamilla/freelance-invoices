@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createDraftInvoice, createFreelancer } from '@/test/factories';
 import { db } from '@/lib/db';
+import { todayKyiv } from '@/lib/dates';
+import { listInvoices } from './queries';
 import { cancelInvoice, issueInvoice, markInvoicePaidManually } from './service';
 
 describe('issueInvoice', () => {
@@ -77,5 +79,18 @@ describe('cancel / manual payment', () => {
     await markInvoicePaidManually(userId, draft.id);
 
     await expect(cancelInvoice(userId, draft.id)).rejects.toThrow('неоплачений');
+  });
+});
+
+describe('listInvoices', () => {
+  it('пошук числом поза межами INT4 повертає порожній список, а не помилку БД', async () => {
+    const { userId, clientId } = await createFreelancer();
+    const draft = await createDraftInvoice(userId, clientId);
+    await issueInvoice(userId, draft.id);
+    const today = todayKyiv();
+
+    await expect(listInvoices(userId, { filter: 'all', q: '99999999999', today })).resolves.toEqual([]);
+    await expect(listInvoices(userId, { filter: 'all', q: '2147483648', today })).resolves.toEqual([]);
+    expect(await listInvoices(userId, { filter: 'all', q: '1', today })).toHaveLength(1);
   });
 });
