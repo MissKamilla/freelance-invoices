@@ -88,7 +88,8 @@ export async function markInvoicePaidAction(idArg: unknown): Promise<ActionResul
   const id = parseIdArg(idArg);
   if (!id) return fail(INVALID_REQUEST);
   return guard(async () => {
-    await markInvoicePaidManually(user.id, id);
+    const { expiredPayments } = await markInvoicePaidManually(user.id, id);
+    await cancelProviderCheckouts(expiredPayments);
     await dispatch(invoicePaid.create({ invoiceId: id, notifyFreelancer: false }), () =>
       sendInvoicePaidEmails(id, { notifyFreelancer: false }),
     );

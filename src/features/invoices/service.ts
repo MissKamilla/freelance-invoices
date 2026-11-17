@@ -149,9 +149,12 @@ export async function cancelInvoice(userId: string, id: string, now: Date = new 
   });
 }
 
-/** Клієнт заплатив переказом на IBAN (QR / реквізити) — фрилансер позначає вручну. */
+/**
+ * Клієнт заплатив переказом на IBAN (QR / реквізити) — фрилансер позначає вручну.
+ * Повертає незавершені checkout-и: їх треба закрити й у провайдера, інакше сторінку оплати карткою ще можна оплатити.
+ */
 export async function markInvoicePaidManually(userId: string, id: string, now: Date = new Date()) {
-  await db.$transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     const invoice = await tx.invoice.findFirst({ where: { id, userId }, select: { total: true, currency: true } });
     const { count } = await tx.invoice.updateMany({
       where: { id, userId, status: 'SENT' },
@@ -159,6 +162,11 @@ export async function markInvoicePaidManually(userId: string, id: string, now: D
     });
     if (!invoice || count === 0) throw new InvoiceError('Позначити оплаченим можна лише виставлений рахунок');
 
+    // Список — після UPDATE рахунку (рядок уже заблоковано), щоб не пропустити платіж, створений паралельно.
+    const pending = await tx.payment.findMany({
+      where: { invoiceId: id, status: 'PENDING' },
+      select: { provider: true, externalId: true },
+    });
     await tx.payment.updateMany({ where: { invoiceId: id, status: 'PENDING' }, data: { status: 'EXPIRED' } });
     await tx.payment.create({
       data: {
@@ -171,6 +179,7 @@ export async function markInvoicePaidManually(userId: string, id: string, now: D
       },
     });
     await tx.invoiceEvent.create({ data: { invoiceId: id, type: 'PAID', meta: { provider: 'MANUAL' } } });
+    return { expiredPayments: pending };
   });
 }
 

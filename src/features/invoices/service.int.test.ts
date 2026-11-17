@@ -56,6 +56,20 @@ describe('cancel / manual payment', () => {
     expect(await db.payment.findUnique({ where: { id: pending.id } })).toMatchObject({ status: 'EXPIRED' });
   });
 
+  it('ручна позначка переводить PENDING у EXPIRED і повертає їх для скасування в провайдера', async () => {
+    const { userId, clientId } = await createFreelancer();
+    const draft = await createDraftInvoice(userId, clientId);
+    await issueInvoice(userId, draft.id);
+    const pending = await db.payment.create({
+      data: { invoiceId: draft.id, provider: 'MOCK', amount: draft.total, externalId: `mock_${draft.id}` },
+    });
+
+    const { expiredPayments } = await markInvoicePaidManually(userId, draft.id);
+
+    expect(expiredPayments).toEqual([{ provider: 'MOCK', externalId: `mock_${draft.id}` }]);
+    expect(await db.payment.findUnique({ where: { id: pending.id } })).toMatchObject({ status: 'EXPIRED' });
+  });
+
   it('оплачений рахунок не можна скасувати', async () => {
     const { userId, clientId } = await createFreelancer();
     const draft = await createDraftInvoice(userId, clientId);
