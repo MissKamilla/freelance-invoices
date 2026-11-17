@@ -16,12 +16,36 @@ export async function afterPaymentApplied(result: ApplyResult) {
 /** Події провайдерів — кілька сотень байтів; усе більше відкидаємо ще до перевірки підпису. */
 const MAX_BODY_BYTES = 64 * 1024;
 
+/**
+ * Читає тіло потоково з межею в байтах: у chunked-запиту немає content-length, а request.text() зчитав би
+ * все в пам'ять. null — ліміт перевищено, читання зупинено. Декодування таке саме, як у request.text()
+ * (UTF-8 без fatal, BOM відкидається), тож рядок байт у байт той самий — підпис перевіряється саме по ньому.
+ */
+async function readBodyLimited(request: Request, maxBytes: number): Promise<string | null> {
+  const reader = request.body?.getReader();
+  if (!reader) return '';
+  const decoder = new TextDecoder();
+  let received = 0;
+  let text = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
+}
+
 /** Спільний обробник вебхуків: ліміт розміру → підпис по сирому тілу → applyPaymentUpdate → 200 / 401 / 400 / 413 / 500. */
 export async function handleWebhook(provider: PaymentProvider, request: Request): Promise<Response> {
-  const declaredLength = Number(request.headers.get('content-length'));
-  if (declaredLength > MAX_BODY_BYTES) return Response.json({ error: 'payload too large' }, { status: 413 });
-  const rawBody = await request.text();
-  if (rawBody.length > MAX_BODY_BYTES) return Response.json({ error: 'payload too large' }, { status: 413 });
+  const tooLarge = () => Response.json({ error: 'payload too large' }, { status: 413 });
+  if (Number(request.headers.get('content-length')) > MAX_BODY_BYTES) return tooLarge();
+  const rawBody = await readBodyLimited(request, MAX_BODY_BYTES);
+  if (rawBody === null) return tooLarge();
 
   let update;
   try {

@@ -98,6 +98,47 @@ describe('webhook body limit', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(await db.invoice.findUnique({ where: { id: invoice.id } })).toMatchObject({ status: 'SENT' });
   });
+
+  it('chunked-тіло без Content-Length теж обмежене: 413, читання зупиняється на ліміті', async () => {
+    const fetchMock = stubMonobankApi();
+    const chunk = new TextEncoder().encode('x'.repeat(16 * 1024));
+    let pulled = 0;
+    // 1 MB шматками по 16 KB. Без ліміту під час читання обробник вичитав би все тіло в пам'ять (будь-якого розміру).
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        if (pulled > 64) controller.close();
+        else controller.enqueue(chunk);
+      },
+    });
+
+    const response = await handleWebhook(
+      monobankProvider,
+      new Request('http://localhost/api/webhooks/monobank', { method: 'POST', body, duplex: 'half' } as RequestInit),
+    );
+
+    expect(response.status).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(pulled).toBeLessThan(10);
+  });
+
+  it('звичайне тіло з кирилицею читається без змін — підпис сходиться', async () => {
+    stubMonobankApi();
+    const { invoice, externalId } = await monobankPayment();
+    const body = JSON.stringify({ ...statusBody(externalId), destination: 'Оплата рахунку № 1 — ґ, є, ї' });
+
+    const response = await handleWebhook(
+      monobankProvider,
+      new Request('http://localhost/api/webhooks/monobank', {
+        method: 'POST',
+        body,
+        headers: { 'x-sign': sign(body) },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await db.invoice.findUnique({ where: { id: invoice.id } })).toMatchObject({ status: 'PAID' });
+  });
 });
 
 describe('reconcilePayment (звірка без вебхука)', () => {
