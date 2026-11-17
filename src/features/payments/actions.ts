@@ -9,7 +9,8 @@ import { hmacSha256Hex } from '@/lib/hmac';
 import { PaymentError } from './errors';
 import { chargeMockCard } from './mock-gateway';
 import { MOCK_SIGNATURE_HEADER, type MockWebhookEvent } from './providers/mock';
-import { startPayment } from './service';
+import { reconcilePayment, startPayment } from './service';
+import { afterPaymentApplied } from './webhook';
 
 export async function startPaymentAction(tokenArg: unknown): Promise<ActionResult> {
   const token = parseIdArg(tokenArg);
@@ -60,4 +61,17 @@ export async function payWithMockCardAction(paymentIdArg: unknown, cardNumberArg
   if (!response.ok) return fail('Платіжний шлюз тимчасово недоступний, спробуйте ще раз');
 
   redirect(`/i/${payment.invoice.publicToken}?payment=${payment.id}`);
+}
+
+/** Клієнт чекає на результат оплати — звіряємо статус з провайдером (для mock — нічого не робить). */
+export async function reconcilePaymentAction(paymentIdArg: unknown, tokenArg: unknown): Promise<void> {
+  const paymentId = parseIdArg(paymentIdArg);
+  const token = parseIdArg(tokenArg);
+  if (!paymentId || !token) return;
+  try {
+    const result = await reconcilePayment(paymentId, token);
+    if (result) await afterPaymentApplied(result);
+  } catch (error) {
+    console.error('[payments] reconcile failed', error);
+  }
 }

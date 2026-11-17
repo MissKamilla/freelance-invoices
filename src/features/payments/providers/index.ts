@@ -1,21 +1,24 @@
 import 'server-only';
 import { env } from '@/lib/env';
 import { mockProvider } from './mock';
+import { monobankProvider } from './monobank';
 import type { PaymentProvider, ProviderId } from './types';
 
-const providers: Partial<Record<ProviderId, PaymentProvider>> = {
+const providers: Record<ProviderId, PaymentProvider> = {
   MOCK: mockProvider,
+  MONOBANK: monobankProvider,
 };
 
-/** Провайдер для нових платежів (PAYMENT_PROVIDER у .env). */
+/** Провайдер для нових платежів (PAYMENT_PROVIDER у .env; monobank — лише з MONOBANK_TOKEN). */
 export function getActiveProvider(): PaymentProvider {
-  const id: ProviderId = env.PAYMENT_PROVIDER === 'monobank' ? 'MONOBANK' : 'MOCK';
-  return getProvider(id);
+  return env.PAYMENT_PROVIDER === 'monobank' ? monobankProvider : mockProvider;
 }
 
 /** Провайдер існуючого платежу (вебхуки, звірка, скасування). */
 export function getProvider(id: ProviderId): PaymentProvider {
-  const provider = providers[id];
-  if (!provider) throw new Error(`Payment provider ${id} is not configured`);
-  return provider;
+  return providers[id];
+}
+
+export function isProviderId(value: string): value is ProviderId {
+  return value === 'MOCK' || value === 'MONOBANK';
 }

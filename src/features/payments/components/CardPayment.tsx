@@ -7,12 +7,12 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import CreditCardOutlined from '@mui/icons-material/CreditCardOutlined';
-import { startPaymentAction } from '../actions';
+import { reconcilePaymentAction, startPaymentAction } from '../actions';
 
 type CardPaymentProps = {
   token: string;
   /** Стан платежу, з яким клієнт повернувся з платіжної сторінки (?payment=…). */
-  returned?: { status: 'PENDING' | 'FAILED' | 'MISMATCH' | 'OTHER'; failureReason: string | null };
+  returned?: { paymentId: string; status: 'PENDING' | 'FAILED' | 'MISMATCH' | 'OTHER'; failureReason: string | null };
 };
 
 const POLL_INTERVAL_MS = 2000;
@@ -24,15 +24,17 @@ export function CardPayment({ token, returned }: CardPaymentProps) {
   const [polls, setPolls] = useState(0);
   const waiting = returned?.status === 'PENDING' && polls < POLL_LIMIT;
 
-  // Вебхук може прийти трохи пізніше за редирект — оновлюємо сторінку, поки статус не зміниться.
+  // Вебхук може прийти пізніше за редирект (або не прийти локально без публічного URL) —
+  // звіряємо статус з провайдером і оновлюємо сторінку, поки він не зміниться.
   useEffect(() => {
     if (!waiting) return;
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
+      if (returned) await reconcilePaymentAction(returned.paymentId, token);
       setPolls((n) => n + 1);
       router.refresh();
     }, POLL_INTERVAL_MS);
     return () => clearTimeout(timer);
-  }, [waiting, polls, router]);
+  }, [waiting, polls, router, returned, token]);
 
   if (waiting) {
     return (

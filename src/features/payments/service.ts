@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { env } from '@/lib/env';
 import { decidePaymentUpdate, type PaymentOutcome } from '@/lib/payment-rules';
 import { PaymentError } from './errors';
-import { getActiveProvider } from './providers';
+import { getActiveProvider, getProvider } from './providers';
 import type { ProviderPaymentUpdate } from './providers/types';
 
 const CHECKOUT_TTL_MS = 60 * 60 * 1000;
@@ -185,4 +185,34 @@ export function getCheckoutPayment(paymentId: string) {
       },
     },
   });
+}
+
+/**
+ * Звірка статусу з провайдером (для monobank локально без публічного URL для вебхуків).
+ * Проходить тим самим шляхом, що й вебхук, — applyPaymentUpdate з тим самим ключем ідемпотентності.
+ */
+export async function reconcilePayment(paymentId: string, publicToken: string): Promise<ApplyResult | null> {
+  const payment = await db.payment.findFirst({
+    where: { id: paymentId, status: 'PENDING', invoice: { publicToken } },
+    select: { provider: true, externalId: true },
+  });
+  if (!payment?.externalId || payment.provider === 'MANUAL') return null;
+
+  const provider = getProvider(payment.provider);
+  if (!provider.fetchStatus) return null;
+  return applyPaymentUpdate(await provider.fetchStatus(payment.externalId));
+}
+
+/** Скасувати незавершені checkout-и в провайдера (best effort — рахунок уже скасовано в нас). */
+export async function cancelProviderCheckouts(payments: { provider: string; externalId: string | null }[]) {
+  await Promise.all(
+    payments.map(async ({ provider, externalId }) => {
+      if (!externalId || (provider !== 'MOCK' && provider !== 'MONOBANK')) return;
+      try {
+        await getProvider(provider).cancel?.(externalId);
+      } catch (error) {
+        console.error('[payments] provider cancel failed', error);
+      }
+    }),
+  );
 }

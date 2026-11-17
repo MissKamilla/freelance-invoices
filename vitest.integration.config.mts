@@ -28,6 +28,9 @@ export default defineConfig({
       APP_URL: 'http://localhost:3000',
       MOCK_WEBHOOK_SECRET: 'integration-test-webhook-secret',
       PAYMENT_PROVIDER: 'mock',
+      MONOBANK_TOKEN: 'integration-test-token',
+      INNGEST_DEV: '1',
+      INNGEST_BASE_URL: 'http://127.0.0.1:1',
     },
   },
 });
