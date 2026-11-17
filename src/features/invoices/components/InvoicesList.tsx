@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -57,21 +57,24 @@ export function InvoicesList({ rows, filter, q, counts }: InvoicesListProps) {
   const pathname = usePathname();
   const [search, setSearch] = useState(q);
 
-  const hrefFor = (nextFilter: InvoiceFilter, nextQ: string) => {
-    const params = new URLSearchParams();
-    if (nextFilter !== 'all') params.set('status', nextFilter);
-    if (nextQ.trim()) params.set('q', nextQ.trim());
-    const query = params.toString();
-    return query ? `${pathname}?${query}` : pathname;
-  };
+  const hrefFor = useCallback(
+    (nextFilter: InvoiceFilter, nextQ: string) => {
+      const params = new URLSearchParams();
+      if (nextFilter !== 'all') params.set('status', nextFilter);
+      if (nextQ.trim()) params.set('q', nextQ.trim());
+      const query = params.toString();
+      return query ? `${pathname}?${query}` : pathname;
+    },
+    [pathname],
+  );
 
   // Пошук оновлює URL із затримкою — сторінка перерендериться на сервері з новим фільтром.
+  // Коли URL наздогнав поле (search === q), ефект нічого не робить, тому циклу немає.
   useEffect(() => {
     if (search === q) return;
     const timer = setTimeout(() => router.replace(hrefFor(filter, search)), 300);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [search, q, filter, router, hrefFor]);
 
   return (
     <Stack spacing={3}>

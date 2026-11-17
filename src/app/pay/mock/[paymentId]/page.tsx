@@ -29,7 +29,7 @@ export default async function MockCheckoutPage({ params }: PageProps<'/pay/mock/
     (!payment.expiresAt || payment.expiresAt > new Date());
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 2, bgcolor: '#EEF1F6' }}>
+    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 2, bgcolor: 'background.default' }}>
       <Card sx={{ width: '100%', maxWidth: 440 }}>
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
           <Stack spacing={3}>

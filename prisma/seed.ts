@@ -10,15 +10,15 @@ import { nanoid } from 'nanoid';
 import { PrismaClient, type InvoiceEventType } from '../src/generated/prisma/client';
 import { DEMO_USER } from '../src/features/auth/demo';
 import type { ClientSnapshot, SellerSnapshot } from '../src/features/invoices/snapshot';
-import { addDays, todayKyiv } from '../src/lib/dates';
+import { addDays, atKyivTime, todayKyiv } from '../src/lib/dates';
 import { calcLineAmount } from '../src/lib/invoice-calc';
 import { buildPaymentPurpose } from '../src/lib/payment-purpose';
 
 const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
-const HOUR = 3_600_000;
 const today = todayKyiv();
-const at = (date: Date, hoursKyiv: number) => new Date(date.getTime() + (hoursKyiv - 2) * HOUR);
+/** Момент «о N-й годині за Києвом» для календарного дня (з урахуванням літнього часу). */
+const at = (date: Date, hoursKyiv: number) => atKyivTime(date, hoursKyiv);
 
 const seller: SellerSnapshot = {
   legalName: 'ФОП Іваненко Олена Петрівна',

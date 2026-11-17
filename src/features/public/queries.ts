@@ -1,16 +1,20 @@
 import 'server-only';
+import { cache } from 'react';
 import { db } from '@/lib/db';
 
-/** Рахунок за публічним токеном. Чернетки й скасовані рахунки клієнту недоступні. */
-export function getPublicInvoice(token: string) {
-  return db.invoice.findFirst({
+/**
+ * Рахунок за публічним токеном. Чернетки й скасовані рахунки клієнту недоступні.
+ * cache(): generateMetadata і сторінка викликають це в одному запиті — у БД іде один SELECT.
+ */
+export const getPublicInvoice = cache((token: string) =>
+  db.invoice.findFirst({
     where: { publicToken: token, status: { in: ['SENT', 'PAID'] } },
     include: {
       items: { orderBy: { position: 'asc' } },
       payments: { orderBy: { createdAt: 'desc' }, take: 5 },
     },
-  });
-}
+  }),
+);
 
 export type PublicInvoice = NonNullable<Awaited<ReturnType<typeof getPublicInvoice>>>;
 
