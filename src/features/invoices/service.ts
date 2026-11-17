@@ -1,9 +1,12 @@
 import 'server-only';
+import { nanoid } from 'nanoid';
 import { db } from '@/lib/db';
-import { fromIsoDate } from '@/lib/dates';
+import { addDays, fromIsoDate, todayKyiv } from '@/lib/dates';
 import { calcLineAmount } from '@/lib/invoice-calc';
+import { buildPaymentPurpose } from '@/lib/payment-purpose';
 import { InvoiceError } from './errors';
 import type { InvoiceDraftData } from './schema';
+import type { ClientSnapshot, SellerSnapshot } from './snapshot';
 
 function toDraftRows(data: InvoiceDraftData) {
   const items = data.items.map((item, index) => ({
@@ -54,4 +57,146 @@ export async function updateDraft(userId: string, id: string, data: InvoiceDraft
 export async function deleteDraft(userId: string, id: string) {
   const { count } = await db.invoice.deleteMany({ where: { id, userId, status: 'DRAFT' } });
   if (count === 0) throw new InvoiceError('Видалити можна лише власну чернетку');
+}
+
+// ─── Життєвий цикл виставленого рахунку ─────────────────────────────────────
+
+/**
+ * Виставлення — одна транзакція:
+ * атомарний інкремент номера (рядок профілю блокується до коміту), знімки реквізитів,
+ * публічний токен, статус SENT і подія ISSUED. Якщо рахунок паралельно вже виставили —
+ * updateMany поверне 0, транзакція відкотиться разом з інкрементом, тож номери йдуть без пропусків.
+ */
+export async function issueInvoice(userId: string, id: string, now: Date = new Date()) {
+  return db.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findFirst({
+      where: { id, userId },
+      include: { client: true, _count: { select: { items: true } } },
+    });
+    if (!invoice) throw new InvoiceError('Рахунок не знайдено');
+    if (invoice.status !== 'DRAFT') throw new InvoiceError('Рахунок уже виставлено');
+    if (invoice._count.items === 0 || invoice.total <= 0) throw new InvoiceError('Додайте хоча б одну позицію');
+
+    const today = todayKyiv(now);
+    if (invoice.dueDate.getTime() < today.getTime()) {
+      throw new InvoiceError('Термін оплати вже минув — змініть дату в чернетці');
+    }
+
+    const profile = await tx.businessProfile.findUnique({ where: { userId } });
+    if (!profile) throw new InvoiceError('Спершу заповніть реквізити ФОП у налаштуваннях');
+
+    const { nextInvoiceNumber } = await tx.businessProfile.update({
+      where: { userId },
+      data: { nextInvoiceNumber: { increment: 1 } },
+      select: { nextInvoiceNumber: true },
+    });
+    const number = nextInvoiceNumber - 1;
+
+    const seller: SellerSnapshot = {
+      legalName: profile.legalName,
+      taxId: profile.taxId,
+      iban: profile.iban,
+      bankName: profile.bankName,
+      address: profile.address,
+      phone: profile.phone,
+      taxNote: profile.taxNote,
+    };
+    const client: ClientSnapshot = {
+      name: invoice.client.name,
+      taxId: invoice.client.taxId,
+      email: invoice.client.email,
+      address: invoice.client.address,
+    };
+
+    const { count } = await tx.invoice.updateMany({
+      where: { id, userId, status: 'DRAFT' },
+      data: {
+        status: 'SENT',
+        number,
+        issueDate: today,
+        issuedAt: now,
+        paymentPurpose: buildPaymentPurpose({ number, issueDate: today }),
+        publicToken: nanoid(24),
+        sellerSnapshot: seller,
+        clientSnapshot: client,
+      },
+    });
+    if (count === 0) throw new InvoiceError('Рахунок уже виставлено');
+
+    await tx.invoiceEvent.create({ data: { invoiceId: id, type: 'ISSUED', meta: { number } } });
+    return { id, number };
+  });
+}
+
+export async function cancelInvoice(userId: string, id: string, now: Date = new Date()) {
+  await db.$transaction(async (tx) => {
+    const { count } = await tx.invoice.updateMany({
+      where: { id, userId, status: 'SENT' },
+      data: { status: 'CANCELLED', cancelledAt: now },
+    });
+    if (count === 0) throw new InvoiceError('Скасувати можна лише виставлений неоплачений рахунок');
+    await tx.payment.updateMany({ where: { invoiceId: id, status: 'PENDING' }, data: { status: 'EXPIRED' } });
+    await tx.invoiceEvent.create({ data: { invoiceId: id, type: 'CANCELLED' } });
+  });
+}
+
+/** Клієнт заплатив переказом на IBAN (QR / реквізити) — фрилансер позначає вручну. */
+export async function markInvoicePaidManually(userId: string, id: string, now: Date = new Date()) {
+  await db.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findFirst({ where: { id, userId }, select: { total: true, currency: true } });
+    const { count } = await tx.invoice.updateMany({
+      where: { id, userId, status: 'SENT' },
+      data: { status: 'PAID', paidAt: now },
+    });
+    if (!invoice || count === 0) throw new InvoiceError('Позначити оплаченим можна лише виставлений рахунок');
+
+    await tx.payment.updateMany({ where: { invoiceId: id, status: 'PENDING' }, data: { status: 'EXPIRED' } });
+    await tx.payment.create({
+      data: {
+        invoiceId: id,
+        provider: 'MANUAL',
+        status: 'SUCCEEDED',
+        amount: invoice.total,
+        currency: invoice.currency,
+        paidAt: now,
+      },
+    });
+    await tx.invoiceEvent.create({ data: { invoiceId: id, type: 'PAID', meta: { provider: 'MANUAL' } } });
+  });
+}
+
+/** Нова чернетка з тим самим клієнтом і позиціями — для щомісячних рахунків. */
+export async function duplicateInvoice(userId: string, id: string, now: Date = new Date()) {
+  const source = await db.invoice.findFirst({
+    where: { id, userId },
+    include: { items: { orderBy: { position: 'asc' } }, client: { select: { archivedAt: true } } },
+  });
+  if (!source) throw new InvoiceError('Рахунок не знайдено');
+  if (source.client.archivedAt) throw new InvoiceError('Клієнт в архіві — спершу відновіть його');
+
+  const profile = await db.businessProfile.findUnique({ where: { userId }, select: { defaultDueDays: true } });
+  const dueDate = addDays(todayKyiv(now), profile?.defaultDueDays ?? 7);
+
+  return db.invoice.create({
+    data: {
+      userId,
+      clientId: source.clientId,
+      dueDate,
+      contractRef: source.contractRef,
+      notes: source.notes,
+      total: source.total,
+      items: {
+        create: source.items.map(({ position, description, unit, quantityHundredths, unitPrice, amount }) => ({
+          position,
+          description,
+          unit,
+          quantityHundredths,
+          unitPrice,
+          amount,
+        })),
+      },
+      events: { create: { type: 'CREATED', meta: { duplicatedFrom: source.number } } },
+    },
+    select: { id: true },
+  });
 }
