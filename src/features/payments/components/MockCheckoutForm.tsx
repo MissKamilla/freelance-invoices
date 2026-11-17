@@ -42,7 +42,6 @@ export function MockCheckoutForm({ paymentId, amount, backUrl }: MockCheckoutFor
       <Stack component="ul" spacing={0.25} sx={{ m: 0, pl: 2, color: 'text.secondary', typography: 'caption' }}>
         <li>{formatCard(MOCK_CARDS.success)} — успішна оплата</li>
         <li>{formatCard(MOCK_CARDS.declined)} — відмова банку</li>
-        <li>{formatCard(MOCK_CARDS.amountMismatch)} — списано на 1 коп. менше</li>
       </Stack>
       <Button type="submit" variant="contained" size="large" loading={pending}>
         Оплатити {formatMoney(amount)}
