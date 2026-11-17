@@ -9,6 +9,8 @@ import ReceiptLongOutlined from '@mui/icons-material/ReceiptLongOutlined';
 import QrCode2Outlined from '@mui/icons-material/QrCode2Outlined';
 import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActiveOutlined';
 import Link from '@/components/Link';
+import { DemoSignInButton } from '@/features/auth/components/AuthForms';
+import { env } from '@/lib/env';
 
 const features = [
   {
@@ -49,6 +51,7 @@ export default function LandingPage() {
           <Button component={Link} href="/login" variant="outlined" size="large">
             Увійти
           </Button>
+          {env.DEMO_MODE && <DemoSignInButton />}
         </Stack>
       </Stack>
 
