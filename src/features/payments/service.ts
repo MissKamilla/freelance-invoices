@@ -19,6 +19,9 @@ const CHECKOUT_IN_FLIGHT_MS = 30 * 1000;
  * 3) checkout зберігаємо лише якщо платіж досі PENDING: поки ходили до провайдера, рахунок могли скасувати.
  */
 export async function startPayment(publicToken: string): Promise<string> {
+  if (env.PAYMENT_PROVIDER === 'disabled') {
+    throw new PaymentError('Оплата в демоверсии отключена');
+  }
   const invoice = await db.invoice.findFirst({
     where: { publicToken },
     select: { id: true, status: true, total: true, currency: true, number: true, paymentPurpose: true },

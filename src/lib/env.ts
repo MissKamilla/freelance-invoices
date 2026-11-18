@@ -14,7 +14,7 @@ const envSchema = z
     SMTP_PORT: z.coerce.number().int().positive().default(1025),
     MAIL_FROM: z.string().default('Freelance Invoices <no-reply@freelance.local>'),
     REMINDER_DEMO_MODE: z.stringbool().default(false),
-    PAYMENT_PROVIDER: z.enum(['mock', 'monobank']).default('mock'),
+    PAYMENT_PROVIDER: z.enum(['mock', 'monobank', 'disabled']).default('mock'),
     MOCK_WEBHOOK_SECRET: z.string().min(8),
     MONOBANK_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
     PUBLIC_URL: z.preprocess(emptyToUndefined, z.url().optional()),
