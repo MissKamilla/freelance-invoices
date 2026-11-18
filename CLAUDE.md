@@ -752,7 +752,7 @@ P2020; редактор — кнопки заблоковані на весь с
 падіння, `disablePast`; синхронізація поля пошуку з URL; monobank `finalAmount`, спільний запит pubkey;
 `poweredByHeader: false`; тінь списку Autocomplete; помилки в Snackbar не зникають самі.
 
-**Перевірено:** 151 unit + 31 інтеграційний тест; production-збірка; браузерний E2E-прогін (puppeteer-core
+**Перевірено:** 152 unit + 51 інтеграційний тест (зокрема доступ між двома акаунтами через Server Actions); production-збірка; браузерний E2E-прогін (puppeteer-core
 з локальним Chrome, поза репозиторієм); навантаження autocannon на production-збірці (окрема БД, 0 % помилок);
 чистий клон → `pnpm bootstrap` з порожньої БД; `pnpm audit` чистий.
 
