@@ -51,7 +51,7 @@ services:
     image: inngest/inngest:v1.53.0
     command: >-
       inngest start
-      --sdk-url http://host.docker.internal:3000/api/inngest
+      --sdk-url ${INNGEST_SDK_URL:-http://host.docker.internal:3000/api/inngest}
       --poll-interval 5
       --event-key local-inngest-event-key
       --signing-key 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
